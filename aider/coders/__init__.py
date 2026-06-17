@@ -1,4 +1,5 @@
 from .architect_coder import ArchitectCoder
+from .atomic_coder import AtomicWholeFileCoder
 from .ask_coder import AskCoder
 from .base_coder import Coder
 from .context_coder import ContextCoder
@@ -27,6 +28,7 @@ __all__ = [
     UnifiedDiffSimpleCoder,
     #    SingleWholeFileFunctionCoder,
     ArchitectCoder,
+    AtomicWholeFileCoder,
     EditorEditBlockCoder,
     EditorWholeFileCoder,
     EditorDiffFencedCoder,

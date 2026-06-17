@@ -354,6 +354,33 @@ Do this:
         # check for one trailing newline
         self.assertEqual(content, new_content + "\n")
 
+    def test_atomic_edit_format_can_be_created(self):
+        from aider.coders.atomic_coder import AtomicWholeFileCoder
+
+        io = InputOutput(yes=True)
+        coder = Coder.create(self.GPT35, "atomic", io=io, fnames=[])
+
+        self.assertIsInstance(coder, AtomicWholeFileCoder)
+        self.assertEqual(coder.edit_format, "atomic")
+
+    def test_atomic_edit_format_rejects_invalid_python_before_write(self):
+        sample_file = "sample.py"
+        original = "def ok():\n    return 1\n"
+        Path(sample_file).write_text(original)
+
+        io = InputOutput(yes=True)
+        coder = Coder.create(self.GPT35, "atomic", io=io, fnames=[sample_file])
+        coder.partial_response_content = (
+            f"{sample_file}\n```python\n"
+            "def broken(:\n    return 2\n```"
+        )
+
+        edited_files = coder.apply_updates()
+
+        self.assertEqual(edited_files, {sample_file})
+        self.assertEqual(Path(sample_file).read_text(), original)
+        self.assertEqual(coder.num_malformed_responses, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
