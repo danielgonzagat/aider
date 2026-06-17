@@ -1222,6 +1222,22 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated * 12))
 
+    def test_repetitive_response_detector_flags_repeated_explanation_cycles(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        cycle = (
+            "- For `-v` and `-x` and `-i` and `-l` and `-n` and no "
+            "matches: no output.\n"
+            "- For `-v` and `-x` and `-i` and `-l` and `-n` and matches: "
+            "file name only.\n"
+            "- For `-v` and `-x` and `-i` and `-l` and `-n` and multiple "
+            "files: file names only.\n"
+            "- For `-v` and `-x` and `-i` and `-l` and `-n` and single "
+            "file: file name only.\n"
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + cycle * 4))
+
     def test_repetitive_response_detector_allows_short_code_repetition(self):
         from aider.coders.base_coder import response_is_repetitive
 
