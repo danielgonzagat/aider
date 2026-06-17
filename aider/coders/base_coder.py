@@ -13,7 +13,7 @@ import sys
 import threading
 import time
 import traceback
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 
 # Optional dependency: used to convert locale codes (eg ``en_US``)
@@ -68,6 +68,50 @@ class MissingAPIKeyError(ValueError):
 
 class FinishReasonLength(Exception):
     pass
+
+
+REPETITIVE_RESPONSE_MIN_CHARS = 1200
+REPETITIVE_RESPONSE_MIN_LINE_REPEATS = 8
+REPETITIVE_RESPONSE_MIN_WORDS = 8
+REPETITIVE_RESPONSE_WINDOW_LINES = 160
+REPETITIVE_RESPONSE_ASSISTANT_NOTE = (
+    "Response stopped because it became repetitive before providing valid edits."
+)
+REPETITIVE_RESPONSE_MESSAGE = (
+    "Your previous response became repetitive before it provided valid edits. "
+    "Reply again using only the required edit format. Do not repeat analysis, "
+    "planning, or explanations."
+)
+
+
+def _looks_like_repeated_explanation(line):
+    line = " ".join(str(line or "").strip().split())
+    if len(line) < 80:
+        return False
+    if line.startswith(("```", "<<<<<<<", ">>>>>>>", "--- ", "+++ ", "@@")):
+        return False
+    words = re.findall(r"[A-Za-z]{2,}", line)
+    if len(words) < REPETITIVE_RESPONSE_MIN_WORDS:
+        return False
+    return line.endswith((".", ":", "?", "!")) or line.startswith(("- ", "* "))
+
+
+def response_is_repetitive(content):
+    content = str(content or "")
+    if len(content) < REPETITIVE_RESPONSE_MIN_CHARS:
+        return False
+
+    repeated_candidates = []
+    for line in content.splitlines()[-REPETITIVE_RESPONSE_WINDOW_LINES:]:
+        normalized = " ".join(line.strip().split())
+        if _looks_like_repeated_explanation(normalized):
+            repeated_candidates.append(normalized)
+
+    if not repeated_candidates:
+        return False
+
+    counts = Counter(repeated_candidates)
+    return max(counts.values(), default=0) >= REPETITIVE_RESPONSE_MIN_LINE_REPEATS
 
 
 def wrap_fence(name):
@@ -1954,6 +1998,12 @@ class Coder:
             if received_content:
                 self._stop_waiting_spinner()
             self.partial_response_content += text
+
+            if response_is_repetitive(self.partial_response_content):
+                self.reflected_message = REPETITIVE_RESPONSE_MESSAGE
+                self.partial_response_content = REPETITIVE_RESPONSE_ASSISTANT_NOTE
+                self.io.tool_error("LLM response became repetitive; retrying.")
+                break
 
             if self.show_pretty():
                 self.live_incremental_response(False)

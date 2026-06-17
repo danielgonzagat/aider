@@ -1211,6 +1211,57 @@ This command will print 'Hello, World!' to the console."""
             sanity_check_messages(coder.cur_messages)
             self.assertEqual(coder.cur_messages[-1]["role"], "assistant")
 
+    def test_repetitive_response_detector_flags_repeated_explanations(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = (
+            "- If `-l` flag is present and `-v` flag is present, we need to "
+            "output file names that contain at least one line that does NOT "
+            "match, so we need to compute matches accordingly.\n"
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated * 12))
+
+    def test_repetitive_response_detector_allows_short_code_repetition(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        content = "println!(\"x\");\n" * 200
+
+        self.assertFalse(response_is_repetitive(content))
+
+    def test_streaming_repetitive_response_sets_reflection(self):
+        class Delta:
+            def __init__(self, content):
+                self.content = content
+
+        class Choice:
+            def __init__(self, content):
+                self.delta = Delta(content)
+
+        class Chunk:
+            def __init__(self, content):
+                self.choices = [Choice(content)]
+
+        with GitTemporaryDirectory():
+            io = InputOutput(yes=True)
+            coder = Coder.create(self.GPT35, "diff", io=io)
+            coder.got_reasoning_content = False
+            coder.ended_reasoning_content = False
+            coder.show_pretty = MagicMock(return_value=False)
+            coder.io.tool_error = MagicMock()
+            repeated = (
+                "- If `-l` flag is present and `-v` flag is present, we need to "
+                "output file names that contain at least one line that does NOT "
+                "match, so we need to compute matches accordingly.\n"
+            )
+            chunks = [Chunk(repeated * 4) for _ in range(5)]
+
+            list(coder.show_send_output_stream(chunks))
+
+            self.assertIn("repetitive", coder.reflected_message)
+            self.assertIn("Response stopped", coder.partial_response_content)
+            coder.io.tool_error.assert_called()
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 
