@@ -381,6 +381,22 @@ Do this:
         self.assertEqual(Path(sample_file).read_text(), original)
         self.assertEqual(coder.num_malformed_responses, 1)
 
+    def test_atomic_prompt_requires_file_listings_without_explanation(self):
+        from aider.coders.atomic_coder import AtomicWholeFilePrompts
+
+        prompt = AtomicWholeFilePrompts()
+        assistant_examples = [
+            message["content"].lstrip()
+            for message in prompt.example_messages
+            if message["role"] == "assistant"
+        ]
+
+        self.assertNotIn("Explain any needed changes", prompt.main_system)
+        self.assertIn("Return only file listings", prompt.main_system)
+        self.assertTrue(assistant_examples)
+        self.assertTrue(assistant_examples[0].startswith("sample.py\n"))
+        self.assertNotIn("Ok, I will", "\n".join(assistant_examples))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -175,15 +175,60 @@ def atomic_write_text(full_path, text):
 
 
 class AtomicWholeFilePrompts(WholeFilePrompts):
-    main_system = WholeFilePrompts.main_system + """
-You are using the atomic whole-file edit format. Your replacement file content is
-validated before it is written. If validation fails, you will receive the
-validation output and must return a corrected complete file.
+    main_system = """Act as an expert software developer.
+Take requests for changes to the supplied code.
+If the request is ambiguous, ask questions before editing.
+{final_reminders}
+Once you understand the request:
+1. Determine silently whether code changes are needed.
+2. If no file changes are needed, say exactly: No changes are needed.
+3. If changes are needed, Return only file listings.
+Do not explain changes before or after file listings.
+Do not output markdown, analysis, plans, bullets, diffs, or commentary outside
+file listings.
+Atomic validation checks replacement file content before writing. If validation
+fails, return corrected complete file listings only.
 """
 
-    system_reminder = WholeFilePrompts.system_reminder + """
-Atomic validation rejects syntax-invalid Python, JavaScript, Go, and Rust before
-writing. Return only complete, syntactically valid file listings.
+    example_messages = [
+        dict(role="user", content="Change the greeting to be more casual"),
+        dict(
+            role="assistant",
+            content="""sample.py
+{fence[0]}
+import sys
+
+def greeting(name):
+    print(f"Hey {{name}}")
+
+if __name__ == "__main__":
+    greeting(sys.argv[1])
+{fence[1]}
+""",
+        ),
+    ]
+
+    system_reminder = """Return only file listings.
+
+A file listing has exactly this shape:
+
+path/to/filename.ext
+{fence[0]}
+<complete updated file content>
+{fence[1]}
+
+Rules:
+- The line immediately before the opening fence is the filename.
+- Include complete file content, not patches, diffs, snippets, summaries, or
+  elisions.
+- Do not write analysis, explanations, bullets, or commentary before, between,
+  or after file listings.
+- If no file changes are needed, say exactly: No changes are needed.
+- Atomic validation rejects syntax-invalid Python, JavaScript, Go, and Rust
+  before writing.
+- If validation fails, return corrected complete file listings only.
+
+{final_reminders}
 """
 
 
