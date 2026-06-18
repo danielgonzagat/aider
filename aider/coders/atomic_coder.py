@@ -238,6 +238,34 @@ class AtomicWholeFileCoder(WholeFileCoder):
     edit_format = "atomic"
     gpt_prompts = AtomicWholeFilePrompts()
 
+    def get_edits(self, mode="update"):
+        edits = super().get_edits(mode=mode)
+        if mode == "diff":
+            return edits
+
+        chat_files = set(self.get_inchat_relative_files())
+        if not chat_files:
+            return edits
+
+        filtered_edits = []
+        ignored_paths = []
+        for path, fname_source, new_lines in edits:
+            if path in chat_files:
+                filtered_edits.append((path, fname_source, new_lines))
+            else:
+                ignored_paths.append(path)
+
+        if filtered_edits:
+            return filtered_edits
+        if ignored_paths:
+            allowed = ", ".join(sorted(chat_files))
+            ignored = ", ".join(sorted(ignored_paths))
+            raise ValueError(
+                "AtomicIgnoredFileListings: ignored file listings for files not in chat: "
+                f"{ignored}. Return complete listings only for: {allowed}."
+            )
+        return filtered_edits
+
     def apply_edits(self, edits):
         for path, _fname_source, new_lines in edits:
             full_path = self.abs_root_path(path)

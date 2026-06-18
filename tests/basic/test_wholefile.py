@@ -381,6 +381,26 @@ Do this:
         self.assertEqual(Path(sample_file).read_text(), original)
         self.assertEqual(coder.num_malformed_responses, 1)
 
+    def test_atomic_edit_format_ignores_files_not_in_chat(self):
+        sample_file = "sample.py"
+        bogus_file = "Thus final answer.sample.py"
+        Path(sample_file).write_text("def value():\n    return 1\n")
+
+        io = InputOutput(yes=True)
+        coder = Coder.create(self.GPT35, "atomic", io=io, fnames=[sample_file])
+        coder.partial_response_content = (
+            f"{bogus_file}\n```python\n"
+            "def value():\n    return 999\n```\n"
+            f"{sample_file}\n```python\n"
+            "def value():\n    return 2\n```\n"
+        )
+
+        edited_files = coder.apply_updates()
+
+        self.assertEqual(edited_files, {sample_file})
+        self.assertFalse(Path(bogus_file).exists())
+        self.assertEqual(Path(sample_file).read_text(), "def value():\n    return 2\n")
+
     def test_atomic_prompt_requires_file_listings_without_explanation(self):
         from aider.coders.atomic_coder import AtomicWholeFilePrompts
 
