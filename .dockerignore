@@ -5,6 +5,6 @@ OLD*
 *.pyc
 .DS_Store
 .env
-.venv
+.venv*
 .aider.*
 build
