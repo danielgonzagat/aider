@@ -1579,6 +1579,39 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("byte-for-byte", reflected)
         self.assertNotIn("wrong duplicate", reflected)
 
+    def test_test_error_reflection_prioritizes_first_failure_context(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "src/test/java/OpticalCharacterReaderTest.java"
+            test_file.parent.mkdir(parents=True)
+            lines = [f"    // filler {line_no}" for line_no in range(1, 230)]
+            lines[210] = "        String parsedInput = new OpticalCharacterReader().parse(Arrays.asList("
+            lines[211] = '                "         ",'
+            lines[212] = '                "    _  _ ",'
+            lines[213] = '                "  | _| _|",'
+            lines[214] = '                "  ||_  _|",'
+            lines[215] = '                "         ",'
+            lines[216] = "        ));"
+            lines[217] = '        assertThat(parsedInput).isEqualTo("123,456,789");'
+            test_file.write_text("\n".join(lines) + "\n")
+
+            low_refs = "\n".join(
+                f"    at OpticalCharacterReaderTest.low(OpticalCharacterReaderTest.java:{line_no})"
+                for line_no in range(13, 170, 12)
+            )
+            errors = (
+                "OpticalCharacterReaderTest > testReaderRecognizesAndCorrectlyFormatsMultiRowInput() FAILED\n"
+                "    at OpticalCharacterReaderTest.high(OpticalCharacterReaderTest.java:211)\n"
+                f"{low_refs}"
+            )
+
+            reflected = augment_test_error_reflection(errors, root=tmpdir)
+
+        self.assertIn("src/test/java/OpticalCharacterReaderTest.java:", reflected)
+        self.assertIn("123,456,789", reflected)
+        self.assertIn("OpticalCharacterReaderTest.java:211", reflected)
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 

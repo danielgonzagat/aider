@@ -395,14 +395,26 @@ def _resolve_test_error_context_path(path, root):
 
 def _merge_line_ranges(ranges):
     merged = []
-    for start, end in sorted(ranges):
+    for start, end in ranges:
         if start > end:
             continue
-        if merged and start <= merged[-1][1] + 1:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
-            continue
-        merged.append((start, end))
+        for index, (old_start, old_end) in enumerate(merged):
+            if start <= old_end + 1 and end >= old_start - 1:
+                merged[index] = (min(old_start, start), max(old_end, end))
+                break
+        else:
+            merged.append((start, end))
     return merged
+
+
+def _ordered_test_error_lines(line_nos):
+    ordered = []
+    if line_nos:
+        ordered.append(line_nos[0])
+    for line_no in sorted(set(line_nos)):
+        if line_no not in ordered:
+            ordered.append(line_no)
+    return ordered
 
 
 def _test_error_line_ranges(abs_path, lines, line_nos):
@@ -410,7 +422,7 @@ def _test_error_line_ranges(abs_path, lines, line_nos):
     if _looks_like_test_file(abs_path):
         ranges.append((1, min(len(lines), TEST_ERROR_CONTEXT_HEAD_LINES)))
 
-    for line_no in sorted(set(line_nos)):
+    for line_no in _ordered_test_error_lines(line_nos):
         ranges.append(
             (
                 max(1, line_no - TEST_ERROR_CONTEXT_RADIUS),
