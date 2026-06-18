@@ -188,7 +188,67 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("opaque object", instructions)
         self.assertIn("expected constructors", instructions)
         self.assertIn("coordinate origin", instructions)
+        self.assertIn("Pair/Point/Position", instructions)
+        self.assertIn("one-based", instructions)
         self.assertIn("new WordLocation(new Pair(1, 1), new Pair(7, 1))", instructions)
+
+    def test_build_test_failure_instructions_matches_expected_messages_and_literals(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "CircularBufferTest.java"
+            test_file.write_text(
+                "class CircularBufferTest {\n"
+                "  void full() {\n"
+                "    assertThatExceptionOfType(BufferIOException.class)\n"
+                "      .isThrownBy(() -> buffer.write(2))\n"
+                "      .withMessage(\"Tried to write to full buffer\");\n"
+                "  }\n"
+                "}\n"
+            )
+            errors = (
+                "./CircularBufferTest.java:5: AssertionFailedError:\n"
+                "Expecting message to be:\n"
+                "  \"Tried to write to full buffer\"\n"
+                "but was:\n"
+                "  \"Buffer is full\""
+            )
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "CircularBuffer.java")
+
+        self.assertIn("withMessage", instructions)
+        self.assertIn("exact expected string literals", instructions)
+        self.assertIn("exception messages", instructions)
+        self.assertIn("Tried to write to full buffer", instructions)
+
+    def test_build_test_failure_instructions_reuses_existing_helper_apis(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_file = Path(tmpdir) / "SgfParsing.java"
+            source_file.write_text(
+                "class SgfParsing { "
+                "void parse(SgfNode node, SgfNode child) { node.addChild(child); } "
+                "}\n"
+            )
+            helper_file = Path(tmpdir) / "SgfNode.java"
+            helper_file.write_text(
+                "class SgfNode {\n"
+                "  void appendChild(SgfNode node) {}\n"
+                "  void setProperties(java.util.Map<String, java.util.List<String>> properties) {}\n"
+                "}\n"
+            )
+            errors = (
+                "./SgfParsing.java:1: error: cannot find symbol\n"
+                "  node.addChild(child);\n"
+                "      ^\n"
+                "  symbol: method addChild(SgfNode)\n"
+                "  location: variable node of type SgfNode\n"
+                "./SgfNode.java:2: note: existing helper method"
+            )
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "SgfParsing.java")
+
+        self.assertIn("cannot find symbol", instructions)
+        self.assertIn("existing helper APIs", instructions)
+        self.assertIn("method names", instructions)
+        self.assertIn("appendChild", instructions)
 
 
 class TestLanguageCopy(unittest.TestCase):
