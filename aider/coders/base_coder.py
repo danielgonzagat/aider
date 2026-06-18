@@ -78,6 +78,7 @@ REPETITIVE_RESPONSE_MIN_SHORT_LINE_CHARS = 30
 REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS = 12
 REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINE_REPEATS = 4
 REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINES = 3
+REPETITIVE_RESPONSE_MIN_DYNAMIC_TEMPLATE_REPEATS = 8
 REPETITIVE_RESPONSE_MIN_SHORT_WORDS = 5
 REPETITIVE_RESPONSE_WINDOW_LINES = 160
 REPETITIVE_RESPONSE_ASSISTANT_NOTE = (
@@ -109,6 +110,7 @@ def _looks_like_repeated_explanation(line):
             "not possible",
             "the test",
             "we need",
+            "need to",
             "we should",
             "could ",
             "would ",
@@ -124,19 +126,34 @@ def _looks_like_repeated_explanation(line):
     return line.endswith((".", ":", "?", "!")) or line.startswith(("- ", "* "))
 
 
+def _repetition_template(line):
+    return re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", line)
+
+
 def response_is_repetitive(content):
     content = str(content or "")
     if len(content) < REPETITIVE_RESPONSE_MIN_CHARS:
         return False
 
     repeated_candidates = []
+    template_candidates = []
     for line in content.splitlines()[-REPETITIVE_RESPONSE_WINDOW_LINES:]:
         normalized = " ".join(line.strip().split())
         if _looks_like_repeated_explanation(normalized):
             repeated_candidates.append(normalized)
+            template = _repetition_template(normalized)
+            if template != normalized:
+                template_candidates.append(template)
 
     if not repeated_candidates:
         return False
+
+    template_counts = Counter(template_candidates)
+    if any(
+        count >= REPETITIVE_RESPONSE_MIN_DYNAMIC_TEMPLATE_REPEATS
+        for count in template_counts.values()
+    ):
+        return True
 
     counts = Counter(repeated_candidates)
     short_cycle_lines = 0

@@ -1268,6 +1268,16 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated * 40))
 
+    def test_repetitive_response_detector_flags_incrementing_numeric_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = "\n".join(
+            f"Now also need to ensure that the Verse function for v={idx} returns empty string."
+            for idx in range(1, 25)
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 
