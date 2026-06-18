@@ -158,12 +158,13 @@ TEST_ERROR_REFLECTION_GUIDANCE = (
     "Use the exact compiler/test messages above to infer required signatures, "
     "argument types, return types, and behavior. Do not repeat the previous "
     "implementation unchanged; make a material correction that addresses the "
-    "reported mismatch. Return only corrected edits."
+    "reported mismatch. Use only the compiler messages and referenced lines; "
+    "do not reconstruct, invent, or quote full test files. Return only corrected edits."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
 TEST_ERROR_CONTEXT_MAX_REFS = 5
-TEST_ERROR_CONTEXT_RADIUS = 1
+TEST_ERROR_CONTEXT_RADIUS = 8
 TEST_ERROR_CONTEXT_MAX_CHARS = 4000
 
 

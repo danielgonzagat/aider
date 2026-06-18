@@ -1381,6 +1381,9 @@ This command will print 'Hello, World!' to the console."""
                 "\n"
                 "func TestHandleErrors() {\n"
                 "\ter := HandleErrors(tests)\n"
+                "\tif len(er) != len(tests) {\n"
+                "\t\tt.Fatal(\"wrong length\")\n"
+                "\t}\n"
                 "}\n"
             )
             errors = (
@@ -1393,6 +1396,7 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("Referenced test/source lines", reflected)
         self.assertIn("sample_test.go:4", reflected)
         self.assertIn("er := HandleErrors(tests)", reflected)
+        self.assertIn("if len(er) != len(tests)", reflected)
 
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())

@@ -62,6 +62,9 @@ AssertionError: 'OK' != 'OKx'
                 "\n"
                 "func TestHandleErrors() {\n"
                 "\ter := HandleErrors(tests)\n"
+                "\tif len(er) != len(tests) {\n"
+                "\t\tt.Fatal(\"wrong length\")\n"
+                "\t}\n"
                 "}\n"
             )
             errors = "./hexadecimal_test.go:4:21: cannot use tests as string"
@@ -71,6 +74,7 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("Referenced test/source lines", instructions)
         self.assertIn("hexadecimal_test.go:", instructions)
         self.assertIn("er := HandleErrors(tests)", instructions)
+        self.assertIn("if len(er) != len(tests)", instructions)
         self.assertIn("hexadecimal.go", instructions)
 
 
