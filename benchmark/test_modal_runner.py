@@ -43,6 +43,7 @@ class TestModalRunner(unittest.TestCase):
 
         self.assertEqual(image, "image-with-runtime-deps")
         self.assertEqual(FakeImage.calls[0][1]["add_python"], MODAL_DOCKERFILE_PYTHON_VERSION)
+        self.assertEqual(FakeImage.calls[0][1]["build_args"], {"AIDER_MODAL_RUNTIME": "1"})
         self.assertEqual(MODAL_DOCKERFILE_PYTHON_VERSION, "3.11")
         runtime_commands = FakeImage.calls[0][2].commands
         self.assertTrue(

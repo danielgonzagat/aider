@@ -1,24 +1,30 @@
 FROM buildpack-deps:jammy
 
-# Install Python 3.11
+ARG AIDER_MODAL_RUNTIME=0
+
+# Install language/runtime dependencies. Modal supplies Python via add_python.
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     cmake \
     libboost-all-dev \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
-    && apt-get install -y \
-    python3.11 \
-    python3.11-venv \
-    python3.11-dev \
-    python3-pip \
     ca-certificates-java \
     openjdk-21-jdk \
     libtbb-dev \
+    && if [ "$AIDER_MODAL_RUNTIME" != "1" ]; then \
+        add-apt-repository ppa:deadsnakes/ppa \
+        && apt-get update \
+        && apt-get install -y \
+            python3.11 \
+            python3.11-venv \
+            python3.11-dev \
+            python3-pip; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
-# Make python3.11 the default python3
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+# Make python3.11 the default python3 when Dockerfile owns Python.
+RUN if [ "$AIDER_MODAL_RUNTIME" != "1" ]; then \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1; \
+    fi
 
 # Install Go with architecture detection
 RUN ARCH=$(uname -m) && \
@@ -60,7 +66,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     eslint@8.49.0
 
 COPY . /aider
-RUN pip3 install --no-cache-dir --upgrade pip uv
-RUN uv pip install --system --no-cache-dir -e /aider[dev]
+RUN if [ "$AIDER_MODAL_RUNTIME" != "1" ]; then \
+    pip3 install --no-cache-dir --upgrade pip uv; \
+    fi
+RUN if [ "$AIDER_MODAL_RUNTIME" != "1" ]; then \
+    uv pip install --system --no-cache-dir -e /aider[dev]; \
+    fi
 RUN git config --global --add safe.directory /aider
 WORKDIR /aider
