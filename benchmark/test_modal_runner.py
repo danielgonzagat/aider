@@ -1,13 +1,18 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
+from unittest.mock import patch
+
+import benchmark.modal_runner as modal_runner
 
 from benchmark.modal_runner import (
     DEFAULT_LANGUAGES,
     MODAL_CONTEXT_SYMLINK_PATHS,
     MODAL_DOCKERFILE_PYTHON_VERSION,
     _build_modal_image,
+    _ensure_polyglot_checkout,
     _git_assume_unchanged_command,
     build_benchmark_command,
     build_shards,
@@ -80,6 +85,28 @@ class TestModalRunner(unittest.TestCase):
             self.assertEqual(summary["run_name"], "atomic-smoke-python")
             self.assertEqual(summary["returncode"], 1)
             self.assertEqual(summary["output_tail"], "failed tests tail")
+
+    def test_existing_polyglot_checkout_at_ref_skips_fetch(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "polyglot-benchmark-go"
+            target.mkdir(parents=True)
+            calls = []
+
+            def fake_run(cmd, **kwargs):
+                calls.append(cmd)
+                if cmd == ["git", "-C", str(target), "rev-parse", "HEAD"]:
+                    return SimpleNamespace(stdout="abc123\n")
+                raise AssertionError(f"unexpected command: {cmd}")
+
+            with patch.object(modal_runner, "REMOTE_BENCHMARK_DIR", Path(tmpdir)):
+                with patch("benchmark.modal_runner.subprocess.run", side_effect=fake_run):
+                    _ensure_polyglot_checkout(
+                        "https://example.invalid/repo.git",
+                        "abc123",
+                        target.name,
+                    )
+
+            self.assertEqual(calls, [["git", "-C", str(target), "rev-parse", "HEAD"]])
 
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)

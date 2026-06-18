@@ -207,6 +207,20 @@ def detect_local_polyglot_ref() -> str | None:
     return completed.stdout.strip() or None
 
 
+def _checkout_matches_ref(target: Path, ref: str) -> bool:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(target), "rev-parse", "HEAD"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except subprocess.CalledProcessError:
+        return False
+    return completed.stdout.strip() == ref
+
+
 def _ensure_polyglot_checkout(repo: str, ref: str | None, exercises_dir: str) -> None:
     target = REMOTE_BENCHMARK_DIR / exercises_dir
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -215,6 +229,8 @@ def _ensure_polyglot_checkout(repo: str, ref: str | None, exercises_dir: str) ->
         subprocess.run(["git", "clone", repo, str(target)], check=True)
 
     if ref:
+        if _checkout_matches_ref(target, ref):
+            return
         subprocess.run(["git", "-C", str(target), "fetch", "--all", "--tags"], check=True)
         subprocess.run(["git", "-C", str(target), "checkout", ref], check=True)
 
