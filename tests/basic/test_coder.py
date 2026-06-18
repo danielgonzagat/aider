@@ -1321,6 +1321,16 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive(content))
 
+    def test_repetitive_response_detector_flags_short_also_test_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = (
+            "Also test for \"1234567890\" (10 digits) area code '1' -> "
+            "throw. Good.\n"
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated * 80))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 

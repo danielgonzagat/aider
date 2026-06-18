@@ -119,6 +119,7 @@ REPETITIVE_RESPONSE_PROSE_MARKERS = (
     "likely",
     "now for",
     "now test",
+    "also test",
     "i'm stuck",
     "let's just",
 )
