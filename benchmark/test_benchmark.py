@@ -140,6 +140,31 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("constructor", instructions)
         self.assertIn("entry point", instructions)
 
+    def test_build_test_failure_instructions_preserves_exception_and_helper_contracts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "CircularBufferTest.java"
+            test_file.write_text(
+                "class CircularBufferTest {\n"
+                "  void reads() throws BufferIOException {\n"
+                "    new CircularBuffer<String>(1).read();\n"
+                "  }\n"
+                "}\n"
+            )
+            helper_file = Path(tmpdir) / "SgfNode.java"
+            helper_file.write_text("class SgfNode {}\n")
+            errors = (
+                "./CircularBufferTest.java:3: error: unreported exception BufferIOException; "
+                "must be caught or declared to be thrown\n"
+                "./SgfParsing.java:147: error: duplicate class: SgfNode"
+            )
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "CircularBuffer.java")
+
+        self.assertIn("exception contracts", instructions)
+        self.assertIn("throws clauses", instructions)
+        self.assertIn("helper classes", instructions)
+        self.assertIn("duplicate class", instructions)
+
 
 class TestLanguageCopy(unittest.TestCase):
     def test_copy_selected_language_practice_dirs_copies_only_requested_language(self):

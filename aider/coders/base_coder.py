@@ -298,11 +298,14 @@ def response_is_repetitive(content):
 TEST_ERROR_REFLECTION_GUIDANCE = (
     "Use the exact compiler/test messages and referenced lines above together "
     "with the original exercise instructions already in the chat to infer "
-    "required signatures, argument types, return types, and behavior. Do not "
-    "repeat the previous implementation unchanged; make a material correction "
-    "that addresses the reported mismatch without reconstructing, inventing, "
-    "or quoting full test files. Match the failing assertion entry point, "
-    "including constructor calls in lambdas. Return only corrected edits."
+    "required signatures, argument types, return types, exception contracts, "
+    "throws clauses, helper classes, and behavior. Do not repeat the previous "
+    "implementation unchanged; make a material correction that addresses the "
+    "reported mismatch without reconstructing, inventing, or quoting full test "
+    "files. When a compiler reports a duplicate class, reuse the existing "
+    "sibling class instead of declaring another one. Match the failing "
+    "assertion entry point, including constructor calls in lambdas. Return "
+    "only corrected edits."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
