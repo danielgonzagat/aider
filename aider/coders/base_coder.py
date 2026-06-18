@@ -328,11 +328,11 @@ TEST_ERROR_WHITESPACE_GUIDANCE = (
     "rules say to normalize them."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
-TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
-TEST_ERROR_CONTEXT_MAX_REFS = 5
+TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:()]+):(?P<line>\d+)(?::\d+)?")
+TEST_ERROR_CONTEXT_MAX_REFS = 16
 TEST_ERROR_CONTEXT_HEAD_LINES = 40
-TEST_ERROR_CONTEXT_RADIUS = 24
-TEST_ERROR_CONTEXT_MAX_CHARS = 4000
+TEST_ERROR_CONTEXT_RADIUS = 20
+TEST_ERROR_CONTEXT_MAX_CHARS = 8000
 
 
 def _path_is_within_root(path, root):
@@ -348,6 +348,51 @@ def _looks_like_test_file(path):
     return "test" in name or "spec" in name
 
 
+def _test_error_context_path_priority(path):
+    path_text = path.as_posix().lower()
+    if "/src/test/" in path_text:
+        return (0, len(path.parts), path_text)
+    if any(part in path.parts for part in ("build", "target", "out")):
+        return (3, len(path.parts), path_text)
+    if _looks_like_test_file(path):
+        return (1, len(path.parts), path_text)
+    if "/src/main/" in path_text:
+        return (2, len(path.parts), path_text)
+    return (4, len(path.parts), path_text)
+
+
+def _resolve_test_error_context_path(path, root):
+    abs_path = path if path.is_absolute() else root / path
+    if abs_path.is_file() and _path_is_within_root(abs_path, root):
+        return abs_path
+    if path.is_absolute():
+        return None
+
+    suffix_parts = tuple(part.lower() for part in path.parts)
+    matches = []
+    try:
+        candidates = root.rglob(path.name)
+    except OSError:
+        return None
+
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        try:
+            rel_parts = tuple(part.lower() for part in candidate.relative_to(root).parts)
+        except ValueError:
+            continue
+        if len(rel_parts) < len(suffix_parts) or rel_parts[-len(suffix_parts) :] != suffix_parts:
+            continue
+        matches.append(candidate)
+
+    if not matches:
+        return None
+
+    matches.sort(key=_test_error_context_path_priority)
+    return matches[0]
+
+
 def _merge_line_ranges(ranges):
     merged = []
     for start, end in sorted(ranges):
@@ -360,17 +405,18 @@ def _merge_line_ranges(ranges):
     return merged
 
 
-def _test_error_line_ranges(abs_path, lines, line_no):
+def _test_error_line_ranges(abs_path, lines, line_nos):
     ranges = []
     if _looks_like_test_file(abs_path):
         ranges.append((1, min(len(lines), TEST_ERROR_CONTEXT_HEAD_LINES)))
 
-    ranges.append(
-        (
-            max(1, line_no - TEST_ERROR_CONTEXT_RADIUS),
-            min(len(lines), line_no + TEST_ERROR_CONTEXT_RADIUS),
+    for line_no in sorted(set(line_nos)):
+        ranges.append(
+            (
+                max(1, line_no - TEST_ERROR_CONTEXT_RADIUS),
+                min(len(lines), line_no + TEST_ERROR_CONTEXT_RADIUS),
+            )
         )
-    )
     return _merge_line_ranges(ranges)
 
 
@@ -380,39 +426,43 @@ def _collect_test_error_context(test_errors, root=None):
 
     root = Path(root)
     seen = set()
-    blocks = []
+    refs_by_path = {}
 
     for match in TEST_ERROR_CONTEXT_PATTERN.finditer(test_errors):
         rel_path = match.group("path").lstrip("./")
         line_no = int(match.group("line"))
         path = Path(rel_path)
-        abs_path = path if path.is_absolute() else root / path
+        abs_path = _resolve_test_error_context_path(path, root)
+        if not abs_path:
+            continue
+
         key = (str(abs_path), line_no)
         if key in seen:
             continue
         seen.add(key)
-
-        if len(blocks) >= TEST_ERROR_CONTEXT_MAX_REFS:
+        refs_by_path.setdefault(abs_path, []).append(line_no)
+        if len(seen) >= TEST_ERROR_CONTEXT_MAX_REFS:
             break
-        if not abs_path.is_file() or not _path_is_within_root(abs_path, root):
-            continue
 
+    blocks = []
+    for abs_path, line_nos in refs_by_path.items():
         try:
             lines = abs_path.read_text(errors="replace").splitlines()
         except OSError:
             continue
 
-        ranges = _test_error_line_ranges(abs_path, lines, line_no)
+        ranges = _test_error_line_ranges(abs_path, lines, line_nos)
         if not ranges:
             continue
 
+        line_markers = set(line_nos)
         rel_display = abs_path.relative_to(root)
         snippet = [f"{rel_display}:"]
         for index, (start, end) in enumerate(ranges):
             if index:
                 snippet.append("  ...")
             for current in range(start, end + 1):
-                marker = ">" if current == line_no else " "
+                marker = ">" if current in line_markers else " "
                 snippet.append(f"{marker} {current}: {lines[current - 1]}")
         blocks.append("\n".join(snippet))
 
@@ -449,7 +499,8 @@ def augment_test_error_reflection(test_errors, root=None):
     parts = [test_errors]
     if context:
         parts.append(context)
-    parts.extend(_test_error_guidance_parts(test_errors))
+    guidance_source = "\n\n".join(parts)
+    parts.extend(_test_error_guidance_parts(guidance_source))
     return "\n\n".join(parts)
 
 

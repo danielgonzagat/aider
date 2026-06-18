@@ -1541,6 +1541,44 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("func ParseHex(string) (int64, error)", reflected)
         self.assertIn("\\\"none\\\", \\\"syntax\\\", or \\\"range\\\"", reflected)
 
+    def test_test_error_reflection_resolves_nested_basename_context(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "src/test/java/ForthEvaluatorTest.java"
+            test_file.parent.mkdir(parents=True)
+            lines = ["class ForthEvaluatorTest {"]
+            lines.extend(f"    // filler {index}" for index in range(2, 113))
+            lines.extend(
+                [
+                    "    public void testErrorIfDividingByZero() {",
+                    "        assertThatIllegalArgumentException()",
+                    "                .isThrownBy(() -> forthEvaluator.evaluateProgram(Collections.singletonList(\"4 0 /\")))",
+                    "                .withMessage(\"Division by 0 is not allowed\");",
+                    "    }",
+                    "}",
+                ]
+            )
+            test_file.write_text("\n".join(lines) + "\n")
+
+            build_file = Path(tmpdir) / "build/tmp/ForthEvaluatorTest.java"
+            build_file.parent.mkdir(parents=True)
+            build_file.write_text('.withMessage("wrong duplicate")\n')
+
+            errors = (
+                "java.lang.ArithmeticException: Division by zero\n"
+                "    at ForthEvaluatorTest.lambda$testErrorIfDividingByZero$6"
+                "(ForthEvaluatorTest.java:116)"
+            )
+
+            reflected = augment_test_error_reflection(errors, root=tmpdir)
+
+        self.assertIn("Referenced test/source lines", reflected)
+        self.assertIn("src/test/java/ForthEvaluatorTest.java:", reflected)
+        self.assertIn(".withMessage(\"Division by 0 is not allowed\")", reflected)
+        self.assertIn("byte-for-byte", reflected)
+        self.assertNotIn("wrong duplicate", reflected)
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 
