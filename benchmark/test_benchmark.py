@@ -99,6 +99,7 @@ AssertionError: 'OK' != 'OKx'
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "acronym_test.rs"
             lines = [f"// filler {line_no}" for line_no in range(1, 101)]
+            lines[70] = "fn apostrophes() { expected HC }"
             lines[79] = "fn underscore_emphasis() { expected TRNT }"
             lines[88] = "    assert_eq!(output, expected);"
             test_file.write_text("\n".join(lines))
@@ -106,6 +107,7 @@ AssertionError: 'OK' != 'OKx'
 
             instructions = build_test_failure_instructions(errors, Path(tmpdir), "lib.rs")
 
+        self.assertIn("apostrophes", instructions)
         self.assertIn("underscore_emphasis", instructions)
         self.assertIn("assert_eq!(output, expected)", instructions)
 
