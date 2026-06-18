@@ -154,6 +154,21 @@ def response_is_repetitive(content):
     return short_cycle_lines >= REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINES
 
 
+TEST_ERROR_REFLECTION_GUIDANCE = (
+    "Use the exact compiler/test messages above to infer required signatures, "
+    "argument types, return types, and behavior. Do not repeat the previous "
+    "implementation unchanged; make a material correction that addresses the "
+    "reported mismatch. Return only corrected edits."
+)
+
+
+def augment_test_error_reflection(test_errors):
+    test_errors = str(test_errors or "")
+    if not test_errors or TEST_ERROR_REFLECTION_GUIDANCE in test_errors:
+        return test_errors
+    return test_errors + "\n\n" + TEST_ERROR_REFLECTION_GUIDANCE
+
+
 def wrap_fence(name):
     return f"<{name}>", f"</{name}>"
 
@@ -1703,7 +1718,7 @@ class Coder:
             if test_errors:
                 ok = self.io.confirm_ask("Attempt to fix test errors?")
                 if ok:
-                    self.reflected_message = test_errors
+                    self.reflected_message = augment_test_error_reflection(test_errors)
                     return
 
     def reply_completed(self):

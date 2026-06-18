@@ -1350,6 +1350,20 @@ This command will print 'Hello, World!' to the console."""
             coder.io.tool_error.assert_called()
             coder.io.assistant_output.assert_not_called()
 
+    def test_test_error_reflection_keeps_errors_and_adds_guidance(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        errors = (
+            "./hexadecimal_test.go:75:21: cannot use tests "
+            "(variable of type []string) as string value in argument to HandleErrors"
+        )
+
+        reflected = augment_test_error_reflection(errors)
+
+        self.assertIn(errors, reflected)
+        self.assertIn("infer required signatures", reflected)
+        self.assertIn("Do not repeat", reflected)
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 
