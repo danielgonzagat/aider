@@ -12,22 +12,37 @@ from benchmark.modal_runner import (
 
 class TestModalRunner(unittest.TestCase):
     def test_modal_dockerfile_image_pins_python_for_modal_runtime(self):
+        class FakeBuiltImage:
+            commands = None
+
+            def run_commands(self, *commands):
+                self.commands = commands
+                return "image-with-runtime-deps"
+
         class FakeImage:
             calls = []
 
             @classmethod
             def from_dockerfile(cls, path, **kwargs):
-                cls.calls.append((path, kwargs))
-                return "image"
+                built_image = FakeBuiltImage()
+                cls.calls.append((path, kwargs, built_image))
+                return built_image
 
         class FakeModal:
             Image = FakeImage
 
         image = _build_modal_image(FakeModal)
 
-        self.assertEqual(image, "image")
+        self.assertEqual(image, "image-with-runtime-deps")
         self.assertEqual(FakeImage.calls[0][1]["add_python"], MODAL_DOCKERFILE_PYTHON_VERSION)
         self.assertEqual(MODAL_DOCKERFILE_PYTHON_VERSION, "3.11")
+        runtime_commands = FakeImage.calls[0][2].commands
+        self.assertTrue(
+            any(
+                "uv pip install --system --no-cache-dir -e /aider[dev]" in command
+                for command in runtime_commands
+            )
+        )
 
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)

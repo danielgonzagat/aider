@@ -36,6 +36,10 @@ def _build_modal_image(modal_module):
         DOCKERFILE,
         context_dir=REPO_ROOT,
         add_python=MODAL_DOCKERFILE_PYTHON_VERSION,
+    ).run_commands(
+        "python -m pip install --no-cache-dir --upgrade pip uv",
+        "uv pip install --system --no-cache-dir -e /aider[dev]",
+        "git config --global --add safe.directory /aider",
     )
 
 
