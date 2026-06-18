@@ -43,6 +43,7 @@ class TestModalRunner(unittest.TestCase):
                 for command in runtime_commands
             )
         )
+        self.assertIn("git config --global core.fileMode false", runtime_commands)
 
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)

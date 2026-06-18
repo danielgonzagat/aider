@@ -39,6 +39,7 @@ def _build_modal_image(modal_module):
     ).run_commands(
         "python -m pip install --no-cache-dir --upgrade pip uv",
         "uv pip install --system --no-cache-dir -e /aider[dev]",
+        "git config --global core.fileMode false",
         "git config --global --add safe.directory /aider",
     )
 
