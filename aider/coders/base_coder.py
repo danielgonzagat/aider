@@ -84,6 +84,18 @@ REPETITIVE_RESPONSE_DYNAMIC_PREFIX_CHARS = 96
 REPETITIVE_RESPONSE_MIN_SHORT_WORDS = 5
 REPETITIVE_RESPONSE_WINDOW_LINES = 160
 REPETITIVE_RESPONSE_SENTENCE_WINDOW = 3
+REPETITIVE_RESPONSE_MIN_COMPARISON_BLOCK_REPEATS = 4
+REPETITIVE_RESPONSE_COMPARISON_RESULT_LABELS = ("actual:", "got:", "result:")
+REPETITIVE_RESPONSE_COMPARISON_EXPECTED_LABELS = ("expected:", "want:")
+REPETITIVE_RESPONSE_COMPARISON_PROSE_MARKERS = (
+    "expected output",
+    "failing comparison",
+    "is different",
+    "not correct",
+    "not match",
+    "our result",
+    "same failing",
+)
 REPETITIVE_RESPONSE_ASSISTANT_NOTE = (
     "Response stopped because it became repetitive before providing valid edits."
 )
@@ -111,6 +123,46 @@ REPETITIVE_RESPONSE_PROSE_MARKERS = (
 def _contains_repetitive_prose_marker(line):
     lower = str(line or "").lower()
     return any(marker in lower for marker in REPETITIVE_RESPONSE_PROSE_MARKERS)
+
+
+def _iter_unfenced_response_lines(lines):
+    in_fence = False
+    for line in lines:
+        stripped = str(line or "").strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            yield line
+
+
+def _normalized_response_line(line):
+    return " ".join(str(line or "").strip().split()).lower()
+
+
+def _has_repeated_comparison_blocks(lines):
+    result_labels = 0
+    expected_labels = 0
+    analysis_lines = 0
+
+    for line in _iter_unfenced_response_lines(lines):
+        lower = _normalized_response_line(line)
+        if not lower:
+            continue
+        if lower in REPETITIVE_RESPONSE_COMPARISON_RESULT_LABELS:
+            result_labels += 1
+            continue
+        if lower in REPETITIVE_RESPONSE_COMPARISON_EXPECTED_LABELS:
+            expected_labels += 1
+            continue
+        if any(marker in lower for marker in REPETITIVE_RESPONSE_COMPARISON_PROSE_MARKERS):
+            analysis_lines += 1
+
+    return (
+        result_labels >= REPETITIVE_RESPONSE_MIN_COMPARISON_BLOCK_REPEATS
+        and expected_labels >= REPETITIVE_RESPONSE_MIN_COMPARISON_BLOCK_REPEATS
+        and analysis_lines >= REPETITIVE_RESPONSE_MIN_COMPARISON_BLOCK_REPEATS
+    )
 
 
 def _looks_like_repeated_explanation(line):
@@ -177,10 +229,14 @@ def response_is_repetitive(content):
     if len(content) < REPETITIVE_RESPONSE_MIN_CHARS:
         return False
 
+    recent_lines = content.splitlines()[-REPETITIVE_RESPONSE_WINDOW_LINES:]
+    if _has_repeated_comparison_blocks(recent_lines):
+        return True
+
     repeated_candidates = []
     template_candidates = []
     prefix_candidates = []
-    for line in content.splitlines()[-REPETITIVE_RESPONSE_WINDOW_LINES:]:
+    for line in recent_lines:
         for normalized in _iter_repetition_units(line):
             if _looks_like_repeated_explanation(normalized):
                 repeated_candidates.append(normalized)
