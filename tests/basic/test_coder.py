@@ -1289,6 +1289,19 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated))
 
+    def test_repetitive_response_detector_flags_long_numeric_payload_prefix_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        def question(stop):
+            return " plus ".join(str(num) for num in range(1, stop))
+
+        repeated = "\n".join(
+            f'Now for "What is {question(stop)}?" works.'
+            for stop in range(40, 75)
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 

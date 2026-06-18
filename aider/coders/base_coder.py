@@ -117,6 +117,7 @@ REPETITIVE_RESPONSE_PROSE_MARKERS = (
     "given ",
     "maybe",
     "likely",
+    "now for",
 )
 
 
