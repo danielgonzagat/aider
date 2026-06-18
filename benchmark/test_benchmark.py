@@ -122,6 +122,24 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("original exercise instructions", instructions)
         self.assertNotIn("Use only the compiler messages", instructions)
 
+    def test_build_test_failure_instructions_points_to_constructor_entrypoints(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "SeriesTest.java"
+            test_file.write_text(
+                "class SeriesTest {\n"
+                "  void emptySeries() {\n"
+                "    assertThatExceptionOfType(IllegalArgumentException.class)\n"
+                "      .isThrownBy(() -> new Series(\"\"));\n"
+                "  }\n"
+                "}\n"
+            )
+            errors = "./SeriesTest.java:4: Expecting code to raise a throwable"
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "Series.java")
+
+        self.assertIn("constructor", instructions)
+        self.assertIn("entry point", instructions)
+
 
 class TestLanguageCopy(unittest.TestCase):
     def test_copy_selected_language_practice_dirs_copies_only_requested_language(self):

@@ -301,7 +301,8 @@ TEST_ERROR_REFLECTION_GUIDANCE = (
     "required signatures, argument types, return types, and behavior. Do not "
     "repeat the previous implementation unchanged; make a material correction "
     "that addresses the reported mismatch without reconstructing, inventing, "
-    "or quoting full test files. Return only corrected edits."
+    "or quoting full test files. Match the failing assertion entry point, "
+    "including constructor calls in lambdas. Return only corrected edits."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
