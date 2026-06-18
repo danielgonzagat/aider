@@ -1,0 +1,94 @@
+import unittest
+
+from benchmark.modal_runner import (
+    DEFAULT_LANGUAGES,
+    build_benchmark_command,
+    build_shards,
+    parse_languages,
+)
+
+
+class TestModalRunner(unittest.TestCase):
+    def test_parse_languages_defaults_and_normalizes(self):
+        self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)
+        self.assertEqual(parse_languages(" Python,go, javascript "), ("python", "go", "javascript"))
+
+    def test_build_shards_names_by_language(self):
+        shards = build_shards("atomic-deepseek", ("go", "python"))
+        self.assertEqual([shard.language for shard in shards], ["go", "python"])
+        self.assertEqual([shard.run_name for shard in shards], [
+            "atomic-deepseek-go",
+            "atomic-deepseek-python",
+        ])
+
+    def test_build_benchmark_command_has_reproducible_flags(self):
+        cmd = build_benchmark_command(
+            run_name="atomic-deepseek-python",
+            model="deepseek/deepseek-chat",
+            edit_format="atomic",
+            language="python",
+            threads=3,
+            tries=2,
+            exercises_dir="polyglot-benchmark",
+        )
+
+        self.assertEqual(cmd[:2], ["./benchmark/benchmark.py", "atomic-deepseek-python"])
+        self.assertIn("--new", cmd)
+        self.assertIn("--model", cmd)
+        self.assertIn("deepseek/deepseek-chat", cmd)
+        self.assertIn("--edit-format", cmd)
+        self.assertIn("atomic", cmd)
+        self.assertIn("--languages", cmd)
+        self.assertIn("python", cmd)
+        self.assertIn("--threads", cmd)
+        self.assertIn("3", cmd)
+        self.assertIn("--tries", cmd)
+        self.assertIn("2", cmd)
+        self.assertNotIn("DEEPSEEK_API_KEY", " ".join(cmd))
+
+    def test_optional_filters_are_added_only_when_set(self):
+        cmd = build_benchmark_command(
+            run_name="sample",
+            model="deepseek/deepseek-chat",
+            edit_format="atomic",
+            language="go",
+            threads=1,
+            tries=1,
+            exercises_dir="polyglot-benchmark",
+            keywords="hexadecimal",
+            num_tests=1,
+            read_model_settings="settings.yml",
+            reasoning_effort="medium",
+            thinking_tokens=1024,
+        )
+
+        self.assertIn("--keywords", cmd)
+        self.assertIn("hexadecimal", cmd)
+        self.assertIn("--num-tests", cmd)
+        self.assertIn("1", cmd)
+        self.assertIn("--read-model-settings", cmd)
+        self.assertIn("settings.yml", cmd)
+        self.assertIn("--reasoning-effort", cmd)
+        self.assertIn("medium", cmd)
+        self.assertIn("--thinking-tokens", cmd)
+        self.assertIn("1024", cmd)
+
+    def test_no_aider_smoke_flags_are_added(self):
+        cmd = build_benchmark_command(
+            run_name="modal-smoke",
+            model="deepseek/deepseek-chat",
+            edit_format="atomic",
+            language="python",
+            threads=1,
+            tries=1,
+            exercises_dir="polyglot-benchmark",
+            no_aider=True,
+            no_unit_tests=True,
+        )
+
+        self.assertIn("--no-aider", cmd)
+        self.assertIn("--no-unit-tests", cmd)
+
+
+if __name__ == "__main__":
+    unittest.main()
