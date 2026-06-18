@@ -28,6 +28,15 @@ OUTPUT_TAIL_CHARS = 8000
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCKERFILE = REPO_ROOT / "benchmark" / "Dockerfile"
+MODAL_DOCKERFILE_PYTHON_VERSION = "3.11"
+
+
+def _build_modal_image(modal_module):
+    return modal_module.Image.from_dockerfile(
+        DOCKERFILE,
+        context_dir=REPO_ROOT,
+        add_python=MODAL_DOCKERFILE_PYTHON_VERSION,
+    )
 
 
 @dataclass(frozen=True)
@@ -229,7 +238,7 @@ def _run_benchmark_request(request: BenchmarkRequest) -> BenchmarkResult:
 if modal is not None:
     app = modal.App(APP_NAME)
     benchmark_volume = modal.Volume.from_name(BENCHMARK_VOLUME_NAME, create_if_missing=True)
-    image = modal.Image.from_dockerfile(DOCKERFILE, context_dir=REPO_ROOT)
+    image = _build_modal_image(modal)
 
     @app.function(
         image=image,

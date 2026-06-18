@@ -2,6 +2,8 @@ import unittest
 
 from benchmark.modal_runner import (
     DEFAULT_LANGUAGES,
+    MODAL_DOCKERFILE_PYTHON_VERSION,
+    _build_modal_image,
     build_benchmark_command,
     build_shards,
     parse_languages,
@@ -9,6 +11,24 @@ from benchmark.modal_runner import (
 
 
 class TestModalRunner(unittest.TestCase):
+    def test_modal_dockerfile_image_pins_python_for_modal_runtime(self):
+        class FakeImage:
+            calls = []
+
+            @classmethod
+            def from_dockerfile(cls, path, **kwargs):
+                cls.calls.append((path, kwargs))
+                return "image"
+
+        class FakeModal:
+            Image = FakeImage
+
+        image = _build_modal_image(FakeModal)
+
+        self.assertEqual(image, "image")
+        self.assertEqual(FakeImage.calls[0][1]["add_python"], MODAL_DOCKERFILE_PYTHON_VERSION)
+        self.assertEqual(MODAL_DOCKERFILE_PYTHON_VERSION, "3.11")
+
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)
         self.assertEqual(parse_languages(" Python,go, javascript "), ("python", "go", "javascript"))
