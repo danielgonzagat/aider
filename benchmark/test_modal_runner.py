@@ -14,6 +14,7 @@ from benchmark.modal_runner import (
     _build_modal_image,
     _ensure_polyglot_checkout,
     _git_assume_unchanged_command,
+    aggregate_modal_shards,
     build_benchmark_command,
     build_shards,
     parse_languages,
@@ -85,6 +86,58 @@ class TestModalRunner(unittest.TestCase):
             self.assertEqual(summary["run_name"], "atomic-smoke-python")
             self.assertEqual(summary["returncode"], 1)
             self.assertEqual(summary["output_tail"], "failed tests tail")
+
+    def test_aggregate_modal_shards_combines_language_trees(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            python_result = root / "2026-06-18-00-00-00--run-python"
+            go_result = root / "2026-06-18-00-00-01--run-go"
+
+            python_case = python_result / "python" / "exercises" / "practice" / "grep"
+            go_case = go_result / "go" / "exercises" / "practice" / "markdown"
+            python_case.mkdir(parents=True)
+            go_case.mkdir(parents=True)
+            (python_case / ".aider.results.json").write_text("{}")
+            (go_case / ".aider.results.json").write_text("{}")
+            (python_result / ".aider.modal-result.json").write_text("{}")
+
+            output_dir = root / "combined"
+            aggregate_modal_shards([python_result, go_result], output_dir)
+
+            python_results = output_dir / "python" / "exercises" / "practice" / "grep"
+            go_results = output_dir / "go" / "exercises" / "practice" / "markdown"
+
+            self.assertTrue((python_results / ".aider.results.json").exists())
+            self.assertTrue((go_results / ".aider.results.json").exists())
+            self.assertFalse((output_dir / ".aider.modal-result.json").exists())
+
+    def test_aggregate_modal_shards_ignores_unscored_language_trees(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            shard = root / "2026-06-18-00-00-00--run-python"
+            scored_case = shard / "python" / "exercises" / "practice" / "grep"
+            unscored_case = shard / "go" / "exercises" / "practice" / "markdown"
+            scored_case.mkdir(parents=True)
+            unscored_case.mkdir(parents=True)
+            (scored_case / ".aider.results.json").write_text("{}")
+
+            output_dir = root / "combined"
+            aggregate_modal_shards([shard], output_dir)
+
+            self.assertTrue((output_dir / "python").exists())
+            self.assertFalse((output_dir / "go").exists())
+
+    def test_aggregate_modal_shards_refuses_existing_output_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            shard = root / "2026-06-18-00-00-00--run-python"
+            case_dir = shard / "python" / "exercises" / "practice" / "grep"
+            case_dir.mkdir(parents=True)
+            output_dir = root / "combined"
+            output_dir.mkdir()
+
+            with self.assertRaises(FileExistsError):
+                aggregate_modal_shards([shard], output_dir)
 
     def test_existing_polyglot_checkout_at_ref_skips_fetch(self):
         with tempfile.TemporaryDirectory() as tmpdir:

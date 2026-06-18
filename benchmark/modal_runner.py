@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import shlex
@@ -107,6 +108,46 @@ def write_modal_result_summary(result: BenchmarkResult) -> Path | None:
     summary_path = Path(result.result_dir) / MODAL_RESULT_SUMMARY_FILENAME
     summary_path.write_text(json.dumps(asdict(result), indent=2, sort_keys=True))
     return summary_path
+
+
+def _language_result_dirs(shard_dir: Path) -> list[Path]:
+    language_dirs = []
+    for child in Path(shard_dir).iterdir():
+        practice_dir = child / "exercises" / "practice"
+        if not child.is_dir() or not practice_dir.is_dir():
+            continue
+        if any(practice_dir.glob("*/.aider.results.json")):
+            language_dirs.append(child)
+    return sorted(language_dirs)
+
+
+def aggregate_modal_shards(shard_dirs: Iterable[Path | str], output_dir: Path | str) -> Path:
+    output_path = Path(output_dir)
+    if output_path.exists():
+        raise FileExistsError(f"aggregate output already exists: {output_path}")
+
+    output_path.mkdir(parents=True)
+    copied_languages: list[str] = []
+    try:
+        for shard_dir in shard_dirs:
+            shard_path = Path(shard_dir)
+            if not shard_path.is_dir():
+                raise FileNotFoundError(f"modal shard result directory not found: {shard_path}")
+
+            for language_dir in _language_result_dirs(shard_path):
+                target = output_path / language_dir.name
+                if target.exists():
+                    raise FileExistsError(f"duplicate language result tree: {target}")
+                shutil.copytree(language_dir, target)
+                copied_languages.append(language_dir.name)
+
+        if not copied_languages:
+            raise ValueError("no language result trees found to aggregate")
+    except Exception:
+        shutil.rmtree(output_path, ignore_errors=True)
+        raise
+
+    return output_path
 
 
 def remote_exercises_dir_for_request(exercises_dir: str, language: str) -> str:
