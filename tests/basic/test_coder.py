@@ -1238,6 +1238,16 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + cycle * 4))
 
+    def test_repetitive_response_detector_flags_short_repeated_option_lines(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = (
+            "- The test may call with -v and -x and -i and -n and -l "
+            "and -? Not possible.\n"
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated * 40))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 

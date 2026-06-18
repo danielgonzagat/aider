@@ -73,6 +73,10 @@ class FinishReasonLength(Exception):
 REPETITIVE_RESPONSE_MIN_CHARS = 800
 REPETITIVE_RESPONSE_MIN_LINE_REPEATS = 4
 REPETITIVE_RESPONSE_MIN_WORDS = 8
+REPETITIVE_RESPONSE_MIN_LONG_LINE_CHARS = 80
+REPETITIVE_RESPONSE_MIN_SHORT_LINE_CHARS = 45
+REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS = 12
+REPETITIVE_RESPONSE_MIN_SHORT_WORDS = 5
 REPETITIVE_RESPONSE_WINDOW_LINES = 160
 REPETITIVE_RESPONSE_ASSISTANT_NOTE = (
     "Response stopped because it became repetitive before providing valid edits."
@@ -86,12 +90,33 @@ REPETITIVE_RESPONSE_MESSAGE = (
 
 def _looks_like_repeated_explanation(line):
     line = " ".join(str(line or "").strip().split())
-    if len(line) < 80:
-        return False
     if line.startswith(("```", "<<<<<<<", ">>>>>>>", "--- ", "+++ ", "@@")):
         return False
+
+    line_len = len(line)
+    if line_len < REPETITIVE_RESPONSE_MIN_SHORT_LINE_CHARS:
+        return False
+
     words = re.findall(r"[A-Za-z]{2,}", line)
-    if len(words) < REPETITIVE_RESPONSE_MIN_WORDS:
+    if line_len >= REPETITIVE_RESPONSE_MIN_LONG_LINE_CHARS:
+        min_words = REPETITIVE_RESPONSE_MIN_WORDS
+    else:
+        min_words = REPETITIVE_RESPONSE_MIN_SHORT_WORDS
+        lower = line.lower()
+        prose_markers = (
+            "not possible",
+            "the test",
+            "we need",
+            "we should",
+            "could ",
+            "would ",
+            "maybe",
+            "likely",
+        )
+        if not any(marker in lower for marker in prose_markers):
+            return False
+
+    if len(words) < min_words:
         return False
     return line.endswith((".", ":", "?", "!")) or line.startswith(("- ", "* "))
 
@@ -111,7 +136,13 @@ def response_is_repetitive(content):
         return False
 
     counts = Counter(repeated_candidates)
-    return max(counts.values(), default=0) >= REPETITIVE_RESPONSE_MIN_LINE_REPEATS
+    for line, count in counts.items():
+        if len(line) >= REPETITIVE_RESPONSE_MIN_LONG_LINE_CHARS:
+            if count >= REPETITIVE_RESPONSE_MIN_LINE_REPEATS:
+                return True
+        elif count >= REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS:
+            return True
+    return False
 
 
 def wrap_fence(name):
