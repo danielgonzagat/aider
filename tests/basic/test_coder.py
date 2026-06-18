@@ -1371,6 +1371,29 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("infer required signatures", reflected)
         self.assertIn("Do not repeat", reflected)
 
+    def test_test_error_reflection_includes_referenced_file_context(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "sample_test.go"
+            test_file.write_text(
+                "package sample\n"
+                "\n"
+                "func TestHandleErrors() {\n"
+                "\ter := HandleErrors(tests)\n"
+                "}\n"
+            )
+            errors = (
+                "./sample_test.go:4:21: cannot use tests "
+                "(variable of type []string) as string value in argument to HandleErrors"
+            )
+
+            reflected = augment_test_error_reflection(errors, root=tmpdir)
+
+        self.assertIn("Referenced test/source lines", reflected)
+        self.assertIn("sample_test.go:4", reflected)
+        self.assertIn("er := HandleErrors(tests)", reflected)
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 

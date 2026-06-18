@@ -160,13 +160,79 @@ TEST_ERROR_REFLECTION_GUIDANCE = (
     "implementation unchanged; make a material correction that addresses the "
     "reported mismatch. Return only corrected edits."
 )
+TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
+TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
+TEST_ERROR_CONTEXT_MAX_REFS = 5
+TEST_ERROR_CONTEXT_RADIUS = 1
+TEST_ERROR_CONTEXT_MAX_CHARS = 4000
 
 
-def augment_test_error_reflection(test_errors):
+def _path_is_within_root(path, root):
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _collect_test_error_context(test_errors, root=None):
+    if not root:
+        return ""
+
+    root = Path(root)
+    seen = set()
+    blocks = []
+
+    for match in TEST_ERROR_CONTEXT_PATTERN.finditer(test_errors):
+        rel_path = match.group("path").lstrip("./")
+        line_no = int(match.group("line"))
+        path = Path(rel_path)
+        abs_path = path if path.is_absolute() else root / path
+        key = (str(abs_path), line_no)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if len(blocks) >= TEST_ERROR_CONTEXT_MAX_REFS:
+            break
+        if not abs_path.is_file() or not _path_is_within_root(abs_path, root):
+            continue
+
+        try:
+            lines = abs_path.read_text(errors="replace").splitlines()
+        except OSError:
+            continue
+
+        start = max(1, line_no - TEST_ERROR_CONTEXT_RADIUS)
+        end = min(len(lines), line_no + TEST_ERROR_CONTEXT_RADIUS)
+        if start > end:
+            continue
+
+        rel_display = abs_path.relative_to(root)
+        snippet = [f"{rel_display}:"]
+        for current in range(start, end + 1):
+            marker = ">" if current == line_no else " "
+            snippet.append(f"{marker} {current}: {lines[current - 1]}")
+        blocks.append("\n".join(snippet))
+
+    if not blocks:
+        return ""
+
+    context = TEST_ERROR_CONTEXT_HEADER + "\n" + "\n\n".join(blocks)
+    return context[:TEST_ERROR_CONTEXT_MAX_CHARS]
+
+
+def augment_test_error_reflection(test_errors, root=None):
     test_errors = str(test_errors or "")
     if not test_errors or TEST_ERROR_REFLECTION_GUIDANCE in test_errors:
         return test_errors
-    return test_errors + "\n\n" + TEST_ERROR_REFLECTION_GUIDANCE
+
+    context = _collect_test_error_context(test_errors, root=root)
+    parts = [test_errors]
+    if context:
+        parts.append(context)
+    parts.append(TEST_ERROR_REFLECTION_GUIDANCE)
+    return "\n\n".join(parts)
 
 
 def wrap_fence(name):
@@ -1718,7 +1784,9 @@ class Coder:
             if test_errors:
                 ok = self.io.confirm_ask("Attempt to fix test errors?")
                 if ok:
-                    self.reflected_message = augment_test_error_reflection(test_errors)
+                    self.reflected_message = augment_test_error_reflection(
+                        test_errors, root=self.root
+                    )
                     return
 
     def reply_completed(self):
