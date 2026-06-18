@@ -9,6 +9,7 @@ from benchmark.modal_runner import (
     build_benchmark_command,
     build_shards,
     parse_languages,
+    remote_exercises_dir_for_request,
 )
 
 
@@ -57,6 +58,20 @@ class TestModalRunner(unittest.TestCase):
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)
         self.assertEqual(parse_languages(" Python,go, javascript "), ("python", "go", "javascript"))
+
+    def test_default_polyglot_checkout_is_isolated_by_language(self):
+        self.assertEqual(
+            remote_exercises_dir_for_request("polyglot-benchmark", "cpp"),
+            "polyglot-benchmark-cpp",
+        )
+        self.assertEqual(
+            remote_exercises_dir_for_request("polyglot-benchmark", "javascript"),
+            "polyglot-benchmark-javascript",
+        )
+        self.assertEqual(
+            remote_exercises_dir_for_request("custom-exercises", "python"),
+            "custom-exercises",
+        )
 
     def test_build_shards_names_by_language(self):
         shards = build_shards("atomic-deepseek", ("go", "python"))

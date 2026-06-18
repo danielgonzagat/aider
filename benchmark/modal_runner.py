@@ -98,6 +98,12 @@ class BenchmarkResult:
     output_tail: str
 
 
+def remote_exercises_dir_for_request(exercises_dir: str, language: str) -> str:
+    if exercises_dir != REMOTE_EXERCISES_DIR:
+        return exercises_dir
+    return f"{REMOTE_EXERCISES_DIR}-{language}"
+
+
 def parse_languages(languages: str | Iterable[str] | None) -> tuple[str, ...]:
     if languages is None:
         return DEFAULT_LANGUAGES
@@ -190,8 +196,8 @@ def detect_local_polyglot_ref() -> str | None:
     return completed.stdout.strip() or None
 
 
-def _ensure_polyglot_checkout(repo: str, ref: str | None) -> None:
-    target = REMOTE_BENCHMARK_DIR / REMOTE_EXERCISES_DIR
+def _ensure_polyglot_checkout(repo: str, ref: str | None, exercises_dir: str) -> None:
+    target = REMOTE_BENCHMARK_DIR / exercises_dir
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if not target.exists():
@@ -216,7 +222,15 @@ def _run_benchmark_request(request: BenchmarkRequest) -> BenchmarkResult:
             f"{DEEPSEEK_SECRET_NAME!r} with that environment variable."
         )
 
-    _ensure_polyglot_checkout(request.polyglot_repo, request.polyglot_ref)
+    remote_exercises_dir = remote_exercises_dir_for_request(
+        request.exercises_dir,
+        request.language,
+    )
+    _ensure_polyglot_checkout(
+        request.polyglot_repo,
+        request.polyglot_ref,
+        remote_exercises_dir,
+    )
 
     cmd = build_benchmark_command(
         run_name=request.run_name,
@@ -225,7 +239,7 @@ def _run_benchmark_request(request: BenchmarkRequest) -> BenchmarkResult:
         language=request.language,
         threads=request.threads,
         tries=request.tries,
-        exercises_dir=request.exercises_dir,
+        exercises_dir=remote_exercises_dir,
         keywords=request.keywords,
         num_tests=request.num_tests,
         read_model_settings=request.read_model_settings,
