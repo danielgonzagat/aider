@@ -1612,6 +1612,38 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("123,456,789", reflected)
         self.assertIn("OpticalCharacterReaderTest.java:211", reflected)
 
+    def test_test_error_reflection_keeps_literal_between_nearby_test_refs(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "src/test/java/ForthEvaluatorTest.java"
+            test_file.parent.mkdir(parents=True)
+            test_lines = [f"    // test filler {line_no}" for line_no in range(1, 220)]
+            test_lines[88] = '                .withMessage("Multiplication requires that the stack contain at least 2 values");'
+            test_lines[113] = "    public void testErrorIfDividingByZero() {"
+            test_lines[114] = "        assertThatExceptionOfType(IllegalArgumentException.class)"
+            test_lines[115] = (
+                "                .isThrownBy(() -> "
+                'forthEvaluator.evaluateProgram(Collections.singletonList("4 0 /")))'
+            )
+            test_lines[116] = '                .withMessage("Division by 0 is not allowed");'
+            test_lines[117] = "    }"
+            test_lines[175] = '                .withMessage("Duplicating requires that the stack contain at least 1 value");'
+            test_file.write_text("\n".join(test_lines) + "\n")
+
+            errors = (
+                "ForthEvaluatorTest > testErrorIfMultiplicationAttemptedWithNothingOnTheStack() FAILED\n"
+                "    at ForthEvaluatorTest.testErrorIfMultiplicationAttemptedWithNothingOnTheStack"
+                "(ForthEvaluatorTest.java:89)\n"
+                "ForthEvaluatorTest > testErrorIfDuplicatingAttemptedWithNothingOnTheStack() FAILED\n"
+                "    at ForthEvaluatorTest.testErrorIfDuplicatingAttemptedWithNothingOnTheStack"
+                "(ForthEvaluatorTest.java:176)"
+            )
+
+            reflected = augment_test_error_reflection(errors, root=tmpdir)
+
+        self.assertIn('.withMessage("Division by 0 is not allowed")', reflected)
+
     def test_test_error_reflection_prioritizes_test_refs_over_source_noise(self):
         from aider.coders.base_coder import augment_test_error_reflection
 

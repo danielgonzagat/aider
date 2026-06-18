@@ -332,6 +332,7 @@ TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:()]+):(?P
 TEST_ERROR_CONTEXT_MAX_REFS = 16
 TEST_ERROR_CONTEXT_HEAD_LINES = 40
 TEST_ERROR_CONTEXT_RADIUS = 20
+TEST_ERROR_TEST_CONTEXT_RADIUS = 30
 TEST_ERROR_CONTEXT_MAX_CHARS = 16000
 
 
@@ -419,14 +420,16 @@ def _ordered_test_error_lines(line_nos):
 
 def _test_error_line_ranges(abs_path, lines, line_nos):
     ranges = []
-    if _looks_like_test_file(abs_path):
+    is_test_file = _looks_like_test_file(abs_path)
+    if is_test_file:
         ranges.append((1, min(len(lines), TEST_ERROR_CONTEXT_HEAD_LINES)))
 
+    radius = TEST_ERROR_TEST_CONTEXT_RADIUS if is_test_file else TEST_ERROR_CONTEXT_RADIUS
     for line_no in _ordered_test_error_lines(line_nos):
         ranges.append(
             (
-                max(1, line_no - TEST_ERROR_CONTEXT_RADIUS),
-                min(len(lines), line_no + TEST_ERROR_CONTEXT_RADIUS),
+                max(1, line_no - radius),
+                min(len(lines), line_no + radius),
             )
         )
     return _merge_line_ranges(ranges)
