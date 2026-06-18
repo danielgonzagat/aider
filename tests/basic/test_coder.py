@@ -1278,6 +1278,17 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated))
 
+    def test_repetitive_response_detector_flags_dynamic_payload_prefix_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = "\n".join(
+            "Now, we need to handle the case where the input is "
+            f"`(;;{chr(65 + idx % 26)}{chr(65 + idx // 26)}[{idx}]B[{idx + 1}])` etc."
+            for idx in range(40)
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 

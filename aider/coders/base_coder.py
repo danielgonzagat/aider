@@ -79,6 +79,8 @@ REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS = 12
 REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINE_REPEATS = 4
 REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINES = 3
 REPETITIVE_RESPONSE_MIN_DYNAMIC_TEMPLATE_REPEATS = 8
+REPETITIVE_RESPONSE_MIN_DYNAMIC_PREFIX_REPEATS = 4
+REPETITIVE_RESPONSE_DYNAMIC_PREFIX_CHARS = 96
 REPETITIVE_RESPONSE_MIN_SHORT_WORDS = 5
 REPETITIVE_RESPONSE_WINDOW_LINES = 160
 REPETITIVE_RESPONSE_SENTENCE_WINDOW = 3
@@ -90,6 +92,25 @@ REPETITIVE_RESPONSE_MESSAGE = (
     "Reply again using only the required edit format. Do not repeat analysis, "
     "planning, or explanations."
 )
+
+
+REPETITIVE_RESPONSE_PROSE_MARKERS = (
+    "not possible",
+    "the test",
+    "we need",
+    "need to",
+    "we should",
+    "could ",
+    "would ",
+    "given ",
+    "maybe",
+    "likely",
+)
+
+
+def _contains_repetitive_prose_marker(line):
+    lower = str(line or "").lower()
+    return any(marker in lower for marker in REPETITIVE_RESPONSE_PROSE_MARKERS)
 
 
 def _looks_like_repeated_explanation(line):
@@ -107,19 +128,7 @@ def _looks_like_repeated_explanation(line):
     else:
         min_words = REPETITIVE_RESPONSE_MIN_SHORT_WORDS
         lower = line.lower()
-        prose_markers = (
-            "not possible",
-            "the test",
-            "we need",
-            "need to",
-            "we should",
-            "could ",
-            "would ",
-            "given ",
-            "maybe",
-            "likely",
-        )
-        if not any(marker in lower for marker in prose_markers):
+        if not _contains_repetitive_prose_marker(lower):
             return False
 
     if len(words) < min_words:
@@ -129,6 +138,19 @@ def _looks_like_repeated_explanation(line):
 
 def _repetition_template(line):
     return re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", line)
+
+
+def _repetition_prefix_template(line):
+    line = str(line or "")
+    if len(line) < REPETITIVE_RESPONSE_MIN_SHORT_LINE_CHARS:
+        return None
+    if not _contains_repetitive_prose_marker(line):
+        return None
+
+    template = _repetition_template(line)
+    template = re.sub(r"`[^`]*`", "`<payload>`", template)
+    template = re.sub(r"\[[^\]]*\]", "[<payload>]", template)
+    return template[:REPETITIVE_RESPONSE_DYNAMIC_PREFIX_CHARS]
 
 
 def _iter_repetition_units(line):
@@ -157,6 +179,7 @@ def response_is_repetitive(content):
 
     repeated_candidates = []
     template_candidates = []
+    prefix_candidates = []
     for line in content.splitlines()[-REPETITIVE_RESPONSE_WINDOW_LINES:]:
         for normalized in _iter_repetition_units(line):
             if _looks_like_repeated_explanation(normalized):
@@ -164,6 +187,9 @@ def response_is_repetitive(content):
                 template = _repetition_template(normalized)
                 if template != normalized:
                     template_candidates.append(template)
+                prefix_template = _repetition_prefix_template(normalized)
+                if prefix_template:
+                    prefix_candidates.append(prefix_template)
 
     if not repeated_candidates:
         return False
@@ -172,6 +198,13 @@ def response_is_repetitive(content):
     if any(
         count >= REPETITIVE_RESPONSE_MIN_DYNAMIC_TEMPLATE_REPEATS
         for count in template_counts.values()
+    ):
+        return True
+
+    prefix_counts = Counter(prefix_candidates)
+    if any(
+        count >= REPETITIVE_RESPONSE_MIN_DYNAMIC_PREFIX_REPEATS
+        for count in prefix_counts.values()
     ):
         return True
 
