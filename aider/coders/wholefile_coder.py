@@ -42,6 +42,14 @@ def _normalize_filename_from_chat_files(fname, chat_files):
     return ""
 
 
+def _filename_line_before_fence(lines, fence_index):
+    for previous_line in reversed(lines[:fence_index]):
+        candidate = previous_line.strip()
+        if candidate:
+            return candidate
+    return ""
+
+
 class WholeFileCoder(Coder):
     """A coder that operates on entire files for code modifications."""
 
@@ -89,7 +97,7 @@ class WholeFileCoder(Coder):
                 # fname==None ... starting a new block
                 if i > 0:
                     fname_source = "block"
-                    fname = lines[i - 1].strip()
+                    fname = _filename_line_before_fence(lines, i)
                     fname = fname.strip("*")  # handle **filename.py**
                     fname = fname.rstrip(":")
                     fname = fname.strip("`")

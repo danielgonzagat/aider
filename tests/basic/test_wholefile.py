@@ -316,6 +316,36 @@ after b
             updated_content = f.read()
         self.assertEqual(updated_content, new_content)
 
+    def test_update_files_with_blank_line_between_filename_and_fence(self):
+        fname_a = Path("a.txt")
+        fname_b = Path("b.txt")
+        fname_a.write_text("before a\n")
+        fname_b.write_text("before b\n")
+
+        response = """
+a.txt
+
+```
+after a
+```
+
+b.txt
+
+```
+after b
+```
+"""
+        io = InputOutput(yes=True)
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[fname_a, fname_b])
+        coder.partial_response_content = response
+
+        edited_files = coder.apply_updates()
+
+        self.assertIn(str(fname_a), edited_files)
+        self.assertIn(str(fname_b), edited_files)
+        self.assertEqual(fname_a.read_text(), "after a\n")
+        self.assertEqual(fname_b.read_text(), "after b\n")
+
     def test_atomic_prefers_final_filename_embedded_in_prose_over_earlier_fence(self):
         sample_file = "connect.js"
         original = "export const oldValue = 0;\n"
