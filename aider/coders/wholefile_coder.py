@@ -76,8 +76,16 @@ class WholeFileCoder(Coder):
         fname = None
         fname_source = None
         new_lines = []
+        ignored_unlabeled_fence = False
+        ignoring_unlabeled_fence = False
         for i, line in enumerate(lines):
             if line.startswith(self.fence[0]) or line.startswith(self.fence[1]):
+                if ignoring_unlabeled_fence:
+                    ignoring_unlabeled_fence = False
+                    if mode == "diff":
+                        output.append(line)
+                    continue
+
                 if fname is not None:
                     # ending an existing block
                     saw_fname = None
@@ -124,11 +132,20 @@ class WholeFileCoder(Coder):
                         fname = chat_files[0]
                         fname_source = "chat"
                     else:
-                        # TODO: sense which file it is by diff size
-                        raise ValueError(
-                            f"No filename provided before {self.fence[0]} in file listing"
-                        )
+                        # Multi-file responses often include explanatory code snippets before
+                        # the final file listings. Skip those blocks and keep scanning.
+                        ignored_unlabeled_fence = True
+                        ignoring_unlabeled_fence = True
+                        fname = None
+                        fname_source = None
+                        new_lines = []
+                        if mode == "diff":
+                            output.append(line)
+                        continue
 
+            elif ignoring_unlabeled_fence:
+                if mode == "diff":
+                    output.append(line)
             elif fname is not None:
                 new_lines.append(line)
             else:
@@ -150,6 +167,9 @@ class WholeFileCoder(Coder):
 
         if fname:
             edits.append((fname, fname_source, new_lines))
+
+        if not edits and ignored_unlabeled_fence and len(chat_files) > 1:
+            raise ValueError(f"No filename provided before {self.fence[0]} in file listing")
 
         seen = set()
         refined_edits = []

@@ -369,6 +369,35 @@ after b
         self.assertEqual(edited_files, {sample_file})
         self.assertEqual(Path(sample_file).read_text(), "export const newValue = 1;\n")
 
+    def test_atomic_skips_unlabeled_snippet_before_multi_file_listings(self):
+        header = "knapsack.h"
+        source = "knapsack.cpp"
+        Path(header).write_text("old header\n")
+        Path(source).write_text("old source\n")
+
+        io = InputOutput(yes=True)
+        coder = Coder.create(self.GPT35, "atomic", io=io, fnames=[header, source])
+        coder.partial_response_content = (
+            "The tests expect this C++ shape:\n\n"
+            "```cpp\n"
+            "int maximum_value(int max_weight);\n"
+            "```\n\n"
+            "We must output only file listings.knapsack.h\n"
+            "```\n"
+            "new header\n"
+            "```\n"
+            "knapsack.cpp\n"
+            "```\n"
+            "new source\n"
+            "```\n"
+        )
+
+        edited_files = coder.apply_updates()
+
+        self.assertEqual(edited_files, {header, source})
+        self.assertEqual(Path(header).read_text(), "new header\n")
+        self.assertEqual(Path(source).read_text(), "new source\n")
+
     def test_full_edit(self):
         # Create a few temporary files
         _, file1 = tempfile.mkstemp()
