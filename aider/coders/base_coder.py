@@ -76,6 +76,8 @@ REPETITIVE_RESPONSE_MIN_WORDS = 8
 REPETITIVE_RESPONSE_MIN_LONG_LINE_CHARS = 80
 REPETITIVE_RESPONSE_MIN_SHORT_LINE_CHARS = 45
 REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS = 12
+REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINE_REPEATS = 4
+REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINES = 3
 REPETITIVE_RESPONSE_MIN_SHORT_WORDS = 5
 REPETITIVE_RESPONSE_WINDOW_LINES = 160
 REPETITIVE_RESPONSE_ASSISTANT_NOTE = (
@@ -110,6 +112,7 @@ def _looks_like_repeated_explanation(line):
             "we should",
             "could ",
             "would ",
+            "given ",
             "maybe",
             "likely",
         )
@@ -136,13 +139,19 @@ def response_is_repetitive(content):
         return False
 
     counts = Counter(repeated_candidates)
+    short_cycle_lines = 0
     for line, count in counts.items():
         if len(line) >= REPETITIVE_RESPONSE_MIN_LONG_LINE_CHARS:
             if count >= REPETITIVE_RESPONSE_MIN_LINE_REPEATS:
                 return True
-        elif count >= REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS:
+            continue
+
+        if count >= REPETITIVE_RESPONSE_MIN_SHORT_LINE_REPEATS:
             return True
-    return False
+        if count >= REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINE_REPEATS:
+            short_cycle_lines += 1
+
+    return short_cycle_lines >= REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINES
 
 
 def wrap_fence(name):

@@ -1248,6 +1248,19 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated * 40))
 
+    def test_repetitive_response_detector_flags_short_multiline_cycles(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        cycle = (
+            "Given the typical pattern, I'll implement HandleErrors as "
+            "returning error.\n\n"
+            "But the test might also call HandleErrors with a string and "
+            "expect a bool.\n"
+            "If the test expects bool, we can change to bool.\n\n"
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + cycle * 6))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 
