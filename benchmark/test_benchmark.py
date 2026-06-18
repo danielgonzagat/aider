@@ -165,6 +165,31 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("helper classes", instructions)
         self.assertIn("duplicate class", instructions)
 
+    def test_build_test_failure_instructions_guides_opaque_coordinate_values(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "WordSearcherTest.java"
+            test_file.write_text(
+                "class WordSearcherTest {\n"
+                "  void locatesWord() {\n"
+                "    var expected = new WordLocation(new Pair(1, 1), new Pair(7, 1));\n"
+                "    var actual = wordSearcher.search(words, grid);\n"
+                "    assertThat(actual).isEqualTo(expected);\n"
+                "  }\n"
+                "}\n"
+            )
+            errors = (
+                "./WordSearcherTest.java:5: AssertionFailedError:\n"
+                "expected: Optional[WordLocation@87b]\n"
+                " but was: Optional[WordLocation@25]"
+            )
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "WordSearcher.java")
+
+        self.assertIn("opaque object", instructions)
+        self.assertIn("expected constructors", instructions)
+        self.assertIn("coordinate origin", instructions)
+        self.assertIn("new WordLocation(new Pair(1, 1), new Pair(7, 1))", instructions)
+
 
 class TestLanguageCopy(unittest.TestCase):
     def test_copy_selected_language_practice_dirs_copies_only_requested_language(self):
