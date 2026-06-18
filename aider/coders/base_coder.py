@@ -164,6 +164,7 @@ TEST_ERROR_REFLECTION_GUIDANCE = (
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
 TEST_ERROR_CONTEXT_MAX_REFS = 5
+TEST_ERROR_CONTEXT_HEAD_LINES = 40
 TEST_ERROR_CONTEXT_RADIUS = 8
 TEST_ERROR_CONTEXT_MAX_CHARS = 4000
 
@@ -174,6 +175,37 @@ def _path_is_within_root(path, root):
     except ValueError:
         return False
     return True
+
+
+def _looks_like_test_file(path):
+    name = path.name.lower()
+    return "test" in name or "spec" in name
+
+
+def _merge_line_ranges(ranges):
+    merged = []
+    for start, end in sorted(ranges):
+        if start > end:
+            continue
+        if merged and start <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            continue
+        merged.append((start, end))
+    return merged
+
+
+def _test_error_line_ranges(abs_path, lines, line_no):
+    ranges = []
+    if _looks_like_test_file(abs_path):
+        ranges.append((1, min(len(lines), TEST_ERROR_CONTEXT_HEAD_LINES)))
+
+    ranges.append(
+        (
+            max(1, line_no - TEST_ERROR_CONTEXT_RADIUS),
+            min(len(lines), line_no + TEST_ERROR_CONTEXT_RADIUS),
+        )
+    )
+    return _merge_line_ranges(ranges)
 
 
 def _collect_test_error_context(test_errors, root=None):
@@ -204,16 +236,18 @@ def _collect_test_error_context(test_errors, root=None):
         except OSError:
             continue
 
-        start = max(1, line_no - TEST_ERROR_CONTEXT_RADIUS)
-        end = min(len(lines), line_no + TEST_ERROR_CONTEXT_RADIUS)
-        if start > end:
+        ranges = _test_error_line_ranges(abs_path, lines, line_no)
+        if not ranges:
             continue
 
         rel_display = abs_path.relative_to(root)
         snippet = [f"{rel_display}:"]
-        for current in range(start, end + 1):
-            marker = ">" if current == line_no else " "
-            snippet.append(f"{marker} {current}: {lines[current - 1]}")
+        for index, (start, end) in enumerate(ranges):
+            if index:
+                snippet.append("  ...")
+            for current in range(start, end + 1):
+                marker = ">" if current == line_no else " "
+                snippet.append(f"{marker} {current}: {lines[current - 1]}")
         blocks.append("\n".join(snippet))
 
     if not blocks:

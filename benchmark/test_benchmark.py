@@ -58,16 +58,32 @@ AssertionError: 'OK' != 'OKx'
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "hexadecimal_test.go"
             test_file.write_text(
+                "// Your solution must include the following definitions:\n"
+                "//\n"
+                "// func ParseHex(string) (int64, error)\n"
+                "// func HandleErrors([]string) []string\n"
+                "//\n"
+                "// HandleErrors returns \\\"none\\\", \\\"syntax\\\", or \\\"range\\\".\n"
+                "\n"
                 "package hexadecimal\n"
                 "\n"
+                "var testCases = []struct {\n"
+                "\tin string\n"
+                "\terrCase string\n"
+                "}{\n"
+                "\t{\\\"1\\\", \\\"none\\\"},\n"
+                "\t{\\\"\\\", \\\"syntax\\\"},\n"
+                "}\n"
+                "\n"
                 "func TestHandleErrors() {\n"
+                "\ttests := []string{\\\"1\\\"}\n"
                 "\ter := HandleErrors(tests)\n"
                 "\tif len(er) != len(tests) {\n"
                 "\t\tt.Fatal(\"wrong length\")\n"
                 "\t}\n"
                 "}\n"
             )
-            errors = "./hexadecimal_test.go:4:21: cannot use tests as string"
+            errors = "./hexadecimal_test.go:20:21: cannot use tests as string"
 
             instructions = build_test_failure_instructions(errors, Path(tmpdir), "hexadecimal.go")
 
@@ -75,6 +91,8 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("hexadecimal_test.go:", instructions)
         self.assertIn("er := HandleErrors(tests)", instructions)
         self.assertIn("if len(er) != len(tests)", instructions)
+        self.assertIn("func ParseHex(string) (int64, error)", instructions)
+        self.assertIn("\\\"none\\\", \\\"syntax\\\", or \\\"range\\\"", instructions)
         self.assertIn("hexadecimal.go", instructions)
 
 

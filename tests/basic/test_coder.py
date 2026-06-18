@@ -1377,9 +1377,25 @@ This command will print 'Hello, World!' to the console."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "sample_test.go"
             test_file.write_text(
+                "// Your solution must include the following definitions:\n"
+                "//\n"
+                "// func ParseHex(string) (int64, error)\n"
+                "// func HandleErrors([]string) []string\n"
+                "//\n"
+                "// HandleErrors returns \\\"none\\\", \\\"syntax\\\", or \\\"range\\\".\n"
+                "\n"
                 "package sample\n"
                 "\n"
+                "var testCases = []struct {\n"
+                "\tin string\n"
+                "\terrCase string\n"
+                "}{\n"
+                "\t{\\\"1\\\", \\\"none\\\"},\n"
+                "\t{\\\"\\\", \\\"syntax\\\"},\n"
+                "}\n"
+                "\n"
                 "func TestHandleErrors() {\n"
+                "\ttests := []string{\\\"1\\\"}\n"
                 "\ter := HandleErrors(tests)\n"
                 "\tif len(er) != len(tests) {\n"
                 "\t\tt.Fatal(\"wrong length\")\n"
@@ -1387,16 +1403,18 @@ This command will print 'Hello, World!' to the console."""
                 "}\n"
             )
             errors = (
-                "./sample_test.go:4:21: cannot use tests "
+                "./sample_test.go:20:21: cannot use tests "
                 "(variable of type []string) as string value in argument to HandleErrors"
             )
 
             reflected = augment_test_error_reflection(errors, root=tmpdir)
 
         self.assertIn("Referenced test/source lines", reflected)
-        self.assertIn("sample_test.go:4", reflected)
+        self.assertIn("sample_test.go:", reflected)
         self.assertIn("er := HandleErrors(tests)", reflected)
         self.assertIn("if len(er) != len(tests)", reflected)
+        self.assertIn("func ParseHex(string) (int64, error)", reflected)
+        self.assertIn("\\\"none\\\", \\\"syntax\\\", or \\\"range\\\"", reflected)
 
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
