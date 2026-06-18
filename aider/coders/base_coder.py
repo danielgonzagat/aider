@@ -438,7 +438,7 @@ def _collect_test_error_context(test_errors, root=None):
 
     root = Path(root)
     seen = set()
-    refs_by_path = {}
+    ordered_refs = []
 
     for match in TEST_ERROR_CONTEXT_PATTERN.finditer(test_errors):
         rel_path = match.group("path").lstrip("./")
@@ -452,9 +452,14 @@ def _collect_test_error_context(test_errors, root=None):
         if key in seen:
             continue
         seen.add(key)
+        ordered_refs.append((abs_path, line_no))
+
+    prioritized_refs = [ref for ref in ordered_refs if _looks_like_test_file(ref[0])]
+    prioritized_refs.extend(ref for ref in ordered_refs if not _looks_like_test_file(ref[0]))
+
+    refs_by_path = {}
+    for abs_path, line_no in prioritized_refs[:TEST_ERROR_CONTEXT_MAX_REFS]:
         refs_by_path.setdefault(abs_path, []).append(line_no)
-        if len(seen) >= TEST_ERROR_CONTEXT_MAX_REFS:
-            break
 
     blocks = []
     for abs_path, line_nos in refs_by_path.items():

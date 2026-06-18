@@ -1612,6 +1612,47 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("123,456,789", reflected)
         self.assertIn("OpticalCharacterReaderTest.java:211", reflected)
 
+    def test_test_error_reflection_prioritizes_test_refs_over_source_noise(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_file = Path(tmpdir) / "src/main/java/ForthEvaluator.java"
+            source_file.parent.mkdir(parents=True)
+            source_lines = [f"    // source filler {line_no}" for line_no in range(1, 160)]
+            source_lines[87] = '                if (b == 0) throw new ArithmeticException("Division by 0");'
+            source_file.write_text("\n".join(source_lines) + "\n")
+
+            test_file = Path(tmpdir) / "src/test/java/ForthEvaluatorTest.java"
+            test_file.parent.mkdir(parents=True)
+            test_lines = [f"    // test filler {line_no}" for line_no in range(1, 140)]
+            test_lines[113] = "    public void testErrorIfDividingByZero() {"
+            test_lines[114] = "        assertThatExceptionOfType(IllegalArgumentException.class)"
+            test_lines[115] = (
+                "                .isThrownBy(() -> "
+                'forthEvaluator.evaluateProgram(Collections.singletonList("4 0 /")))'
+            )
+            test_lines[116] = '                .withMessage("Division by 0 is not allowed");'
+            test_lines[117] = "    }"
+            test_file.write_text("\n".join(test_lines) + "\n")
+
+            source_noise = "\n".join(
+                f"    at ForthEvaluator.noise(ForthEvaluator.java:{line_no})"
+                for line_no in range(1, 30)
+            )
+            errors = (
+                f"{source_noise}\n"
+                "ForthEvaluatorTest > testErrorIfDividingByZero() FAILED\n"
+                "    java.lang.ArithmeticException: Division by 0\n"
+                "    at ForthEvaluator.executeToken(ForthEvaluator.java:88)\n"
+                "    at ForthEvaluatorTest.lambda$testErrorIfDividingByZero$6"
+                "(ForthEvaluatorTest.java:116)"
+            )
+
+            reflected = augment_test_error_reflection(errors, root=tmpdir)
+
+        self.assertIn("src/test/java/ForthEvaluatorTest.java:", reflected)
+        self.assertIn('.withMessage("Division by 0 is not allowed")', reflected)
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 
