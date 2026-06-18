@@ -30,6 +30,23 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCKERFILE = REPO_ROOT / "benchmark" / "Dockerfile"
 MODAL_DOCKERFILE_PYTHON_VERSION = "3.11"
 
+MODAL_CONTEXT_SYMLINK_PATHS = (
+    "aider/website/_posts/2023-05-25-ctags.md",
+    "aider/website/_posts/2023-07-02-benchmarks.md",
+    "aider/website/_posts/2023-11-06-benchmarks-1106.md",
+    "aider/website/_posts/2023-11-06-benchmarks-speed-1106.md",
+    "aider/website/_posts/2023-12-21-unified-diffs.md",
+    "aider/website/_posts/2024-01-25-benchmarks-0125.md",
+)
+
+
+def _git_assume_unchanged_command(paths: Iterable[str]) -> str:
+    quoted_paths = " ".join(shlex.quote(path) for path in paths)
+    return (
+        f"git -C {shlex.quote(str(REMOTE_AIDER_DIR))} "
+        f"update-index --assume-unchanged {quoted_paths}"
+    )
+
 
 def _build_modal_image(modal_module):
     return modal_module.Image.from_dockerfile(
@@ -41,6 +58,7 @@ def _build_modal_image(modal_module):
         "uv pip install --system --no-cache-dir -e /aider[dev]",
         "git config --global core.fileMode false",
         "git config --global --add safe.directory /aider",
+        _git_assume_unchanged_command(MODAL_CONTEXT_SYMLINK_PATHS),
     )
 
 

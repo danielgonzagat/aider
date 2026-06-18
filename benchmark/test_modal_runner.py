@@ -2,8 +2,10 @@ import unittest
 
 from benchmark.modal_runner import (
     DEFAULT_LANGUAGES,
+    MODAL_CONTEXT_SYMLINK_PATHS,
     MODAL_DOCKERFILE_PYTHON_VERSION,
     _build_modal_image,
+    _git_assume_unchanged_command,
     build_benchmark_command,
     build_shards,
     parse_languages,
@@ -44,6 +46,13 @@ class TestModalRunner(unittest.TestCase):
             )
         )
         self.assertIn("git config --global core.fileMode false", runtime_commands)
+        assume_unchanged_command = _git_assume_unchanged_command(
+            MODAL_CONTEXT_SYMLINK_PATHS
+        )
+        self.assertIn(assume_unchanged_command, runtime_commands)
+        self.assertEqual(len(MODAL_CONTEXT_SYMLINK_PATHS), 6)
+        for symlink_path in MODAL_CONTEXT_SYMLINK_PATHS:
+            self.assertIn(symlink_path, assume_unchanged_command)
 
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)
