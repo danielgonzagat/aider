@@ -199,7 +199,8 @@ class TestModalRunner(unittest.TestCase):
         )
 
         self.assertEqual(cmd[:2], ["./benchmark/benchmark.py", "atomic-deepseek-python"])
-        self.assertIn("--new", cmd)
+        self.assertIn("--cont", cmd)
+        self.assertNotIn("--new", cmd)
         self.assertIn("--model", cmd)
         self.assertIn("deepseek/deepseek-chat", cmd)
         self.assertIn("--edit-format", cmd)
@@ -211,6 +212,21 @@ class TestModalRunner(unittest.TestCase):
         self.assertIn("--tries", cmd)
         self.assertIn("2", cmd)
         self.assertNotIn("DEEPSEEK_API_KEY", " ".join(cmd))
+
+    def test_build_benchmark_command_can_force_fresh_run(self):
+        cmd = build_benchmark_command(
+            run_name="fresh-run",
+            model="deepseek/deepseek-chat",
+            edit_format="atomic",
+            language="python",
+            threads=1,
+            tries=1,
+            exercises_dir="polyglot-benchmark",
+            resume=False,
+        )
+
+        self.assertIn("--new", cmd)
+        self.assertNotIn("--cont", cmd)
 
     def test_optional_filters_are_added_only_when_set(self):
         cmd = build_benchmark_command(

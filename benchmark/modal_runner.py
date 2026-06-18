@@ -87,6 +87,7 @@ class BenchmarkRequest:
     thinking_tokens: int | None = None
     no_aider: bool = False
     no_unit_tests: bool = False
+    resume: bool = True
     polyglot_repo: str = DEFAULT_POLYGLOT_REPO
     polyglot_ref: str | None = None
 
@@ -190,6 +191,7 @@ def build_benchmark_command(
     thinking_tokens: int | None = None,
     no_aider: bool = False,
     no_unit_tests: bool = False,
+    resume: bool = True,
 ) -> list[str]:
     cmd = [
         "./benchmark/benchmark.py",
@@ -206,8 +208,8 @@ def build_benchmark_command(
         str(tries),
         "--exercises-dir",
         exercises_dir,
-        "--new",
     ]
+    cmd.append("--cont" if resume else "--new")
 
     if no_aider:
         cmd.append("--no-aider")
@@ -315,6 +317,7 @@ def _run_benchmark_request(request: BenchmarkRequest) -> BenchmarkResult:
         thinking_tokens=request.thinking_tokens,
         no_aider=request.no_aider,
         no_unit_tests=request.no_unit_tests,
+        resume=request.resume,
     )
 
     env = os.environ.copy()
@@ -377,6 +380,7 @@ if modal is not None:
         thinking_tokens: int = 0,
         no_aider: bool = False,
         no_unit_tests: bool = False,
+        resume: bool = True,
         polyglot_repo: str = DEFAULT_POLYGLOT_REPO,
         polyglot_ref: str = "",
     ) -> None:
@@ -400,6 +404,7 @@ if modal is not None:
                     thinking_tokens=thinking_tokens or None,
                     no_aider=no_aider,
                     no_unit_tests=no_unit_tests,
+                    resume=resume,
                     polyglot_repo=polyglot_repo,
                     polyglot_ref=pinned_ref,
                 )
