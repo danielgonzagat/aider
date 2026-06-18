@@ -1343,6 +1343,28 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + cycle * 4))
 
+    def test_repetitive_response_detector_flags_repeated_private_method_planning_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        suffixes = (
+            "currency",
+            "decimal",
+            "thousands",
+            "formatting",
+            "locale",
+            "sign",
+            "parentheses",
+            "minus",
+            "space",
+        )
+        repeated = "\n".join(
+            f"- We'll also add a private static method to get amount string with {suffix}."
+            for _ in range(8)
+            for suffix in suffixes
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated))
+
     def test_repetitive_response_detector_flags_repeated_sentence_paragraphs(self):
         from aider.coders.base_coder import response_is_repetitive
 

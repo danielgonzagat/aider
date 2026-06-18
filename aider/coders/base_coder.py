@@ -112,6 +112,7 @@ REPETITIVE_RESPONSE_PROSE_MARKERS = (
     "we need",
     "need to",
     "we should",
+    "we'll also",
     "could ",
     "would ",
     "given ",
@@ -197,7 +198,12 @@ def _repetition_template(line):
     template = re.sub(r"`[^`\n]*`", "`<payload>`", line)
     template = re.sub(r'"[^"\n]*"', '"<payload>"', template)
     template = re.sub(r"\[[^\]\n]*\]", "[<payload>]", template)
-    return re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", template)
+    template = re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", template)
+    return re.sub(
+        r"\b(with|for|from|to|using) [A-Za-z][A-Za-z0-9_-]*(?=\s*[.!?:]?$)",
+        r"\1 <payload>",
+        template,
+    )
 
 
 def _repetition_prefix_template(line):
