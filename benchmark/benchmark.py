@@ -692,6 +692,57 @@ def run_test(original_dname, testdir, *args, **kwargs):
         results_fname.write_text(json.dumps(dict(exception=traceback.format_exc())))
 
 
+def original_exercise_file(original_dname, testdir, file_path):
+    lang_part = str(testdir).split("/exercises/practice/")[0]
+    return (
+        original_dname
+        / Path(lang_part).name
+        / "exercises"
+        / "practice"
+        / testdir.name
+        / file_path
+    )
+
+
+def restore_original_exercise_file(original_dname, testdir, file_path):
+    dst = testdir / Path(file_path)
+    original_fname = original_exercise_file(original_dname, testdir, file_path)
+    if original_fname.exists():
+        os.makedirs(dst.parent, exist_ok=True)
+        shutil.copy(original_fname, dst)
+    return dst
+
+
+def collect_benchmark_chat_files(original_dname, testdir, config, ignore_files):
+    files_config = config.get("files", {})
+    solution_files = set(files_config.get("solution", []))
+    editor_files = set(files_config.get("editor", []))
+
+    solution_files.difference_update(ignore_files)
+    editor_files.difference_update(ignore_files)
+    editor_files.difference_update(solution_files)
+
+    fnames = []
+    for file_path in sorted(solution_files):
+        src = testdir / Path(file_path)
+        if src.exists():
+            fnames.append(
+                restore_original_exercise_file(original_dname, testdir, file_path)
+            )
+        else:
+            print(f"Warning: Solution file not found: {src}")
+
+    read_only_fnames = []
+    for file_path in sorted(editor_files):
+        src = testdir / Path(file_path)
+        if src.exists():
+            read_only_fnames.append(
+                restore_original_exercise_file(original_dname, testdir, file_path)
+            )
+
+    return fnames, read_only_fnames
+
+
 def run_test_real(
     original_dname,
     testdir,
@@ -731,7 +782,6 @@ def run_test_real(
             print(f"{results_fname} failed to parse, redoing...")
 
     # Read solution and test files from config
-    fnames = []
     config_file = testdir / ".meta/config.json"
     if not config_file.exists():
         raise ValueError(f"No config file found: {config_file}")
@@ -742,7 +792,6 @@ def run_test_real(
     # Get file sets from config
     test_files = config.get("files", {}).get("test", [])
     example_files = config.get("files", {}).get("example", [])
-    solution_files = set(config.get("files", {}).get("solution", []))
 
     # Forcibly ignore certain files not covered by test_files and example_files
     ignore_files = set(
@@ -760,30 +809,12 @@ def run_test_real(
     ignore_files.update(test_files)
     ignore_files.update(example_files)
 
-    # Remove any ignore files from the solution set that LLM will edit
-    solution_files.difference_update(ignore_files)
-
-    # Copy all solution files
-    for file_path in solution_files:
-        src = testdir / Path(file_path)
-        if src.exists():
-            fnames.append(src)
-            # restore the original file, in case we interrupted a prev run
-            # Find the original file in the language-specific practice dir
-            lang_part = str(testdir).split("/exercises/practice/")[0]
-            original_fname = (
-                original_dname
-                / Path(lang_part).name
-                / "exercises"
-                / "practice"
-                / testdir.name
-                / file_path
-            )
-            if original_fname.exists():
-                os.makedirs(src.parent, exist_ok=True)
-                shutil.copy(original_fname, src)
-        else:
-            print(f"Warning: Solution file not found: {src}")
+    fnames, read_only_fnames = collect_benchmark_chat_files(
+        original_dname,
+        testdir,
+        config,
+        ignore_files,
+    )
 
     file_list = " ".join(fname.name for fname in fnames)
 
@@ -833,13 +864,16 @@ def run_test_real(
     dump(main_model)
     dump(edit_format)
     show_fnames = ",".join(map(str, fnames))
+    show_read_only_fnames = ",".join(map(str, read_only_fnames))
     print("fnames:", show_fnames)
+    print("read_only_fnames:", show_read_only_fnames)
 
     coder = Coder.create(
         main_model,
         edit_format,
         io,
         fnames=fnames,
+        read_only_fnames=read_only_fnames,
         use_git=False,
         stream=False,
         verbose=verbose,

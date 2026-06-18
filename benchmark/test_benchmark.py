@@ -251,6 +251,43 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("appendChild", instructions)
 
 
+class TestBenchmarkFileContext(unittest.TestCase):
+    def test_collect_benchmark_chat_files_adds_editor_files_as_read_only(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            original = Path(tmpdir) / "original"
+            testdir = Path(tmpdir) / "run" / "java" / "exercises" / "practice" / "sample"
+            original_sample = original / "java" / "exercises" / "practice" / "sample"
+
+            solution_path = Path("src/main/java/Sample.java")
+            helper_path = Path("src/main/java/SampleHelper.java")
+            for base in (testdir, original_sample):
+                (base / solution_path.parent).mkdir(parents=True)
+
+            (testdir / solution_path).write_text("dirty solution\n")
+            (testdir / helper_path).write_text("dirty helper\n")
+            (original_sample / solution_path).write_text("original solution\n")
+            (original_sample / helper_path).write_text("original helper\n")
+
+            config = {
+                "files": {
+                    "solution": [solution_path.as_posix()],
+                    "editor": [helper_path.as_posix()],
+                }
+            }
+
+            fnames, read_only_fnames = benchmark_script.collect_benchmark_chat_files(
+                original,
+                testdir,
+                config,
+                ignore_files=set(),
+            )
+
+            self.assertEqual(fnames, [testdir / solution_path])
+            self.assertEqual(read_only_fnames, [testdir / helper_path])
+            self.assertEqual((testdir / solution_path).read_text(), "original solution\n")
+            self.assertEqual((testdir / helper_path).read_text(), "original helper\n")
+
+
 class TestLanguageCopy(unittest.TestCase):
     def test_copy_selected_language_practice_dirs_copies_only_requested_language(self):
         with tempfile.TemporaryDirectory() as tmpdir:
