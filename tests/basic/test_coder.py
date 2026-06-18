@@ -1685,6 +1685,84 @@ This command will print 'Hello, World!' to the console."""
         self.assertIn("src/test/java/ForthEvaluatorTest.java:", reflected)
         self.assertIn('.withMessage("Division by 0 is not allowed")', reflected)
 
+    def test_test_error_reflection_warns_about_preprocessed_connect_boards(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "connect_test.go"
+            test_file.write_text(
+                "package connect\n\n"
+                "func prepare(lines []string) []string {\n"
+                "    // remove all display spaces before calling the solution\n"
+                "    return lines\n"
+                "}\n\n"
+                "func TestResultOf() {\n"
+                "    actual, _ := ResultOf(prepare(tc.board))\n"
+                "    if actual != tc.expected {\n"
+                "        t.Errorf(\"got %q want %q\", actual, tc.expected)\n"
+                "    }\n"
+                "}\n"
+            )
+            cases_file = Path(tmpdir) / "cases_test.go"
+            cases_file.write_text(
+                "package connect\n\n"
+                "// illegal diagonal does not make a winner\n"
+                "// nobody wins crossing adjacent angles\n"
+            )
+            errors = (
+                "--- FAIL: TestResultOf/illegal_diagonal_does_not_make_a_winner\n"
+                "connect_test.go:7: ResultOf(prepare(tc.board)) returned wrong result\n"
+                "connect_test.go:9: got: \"X\" want: \"\"\n"
+            )
+
+            reflected = augment_test_error_reflection(errors, root=tmpdir)
+
+        self.assertIn("pre-process", reflected)
+        self.assertIn("six hex-grid neighbors", reflected)
+        self.assertIn("prepare(tc.board)", reflected)
+
+    def test_test_error_reflection_warns_about_channel_timeout_reports(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        errors = (
+            "Tests timed out!\n"
+            "robot_simulator_step3_test.go:219: pls := <-rep\n"
+            "robot_simulator_step3_test.go:263: close(log)\n"
+        )
+
+        reflected = augment_test_error_reflection(errors)
+
+        self.assertIn("unclosed shared channel", reflected)
+        self.assertIn("report", reflected)
+
+    def test_test_error_reflection_warns_about_forth_definition_snapshots(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        errors = (
+            "ForthEvaluatorTest > testCanDefineWordThatUsesWordWithTheSameName() FAILED\n"
+            "java.lang.StackOverflowError\n"
+            "alloc_attack assertion failed: allocated memory exceeded limit\n"
+        )
+
+        reflected = augment_test_error_reflection(errors)
+
+        self.assertIn("definition snapshot", reflected)
+        self.assertIn("eager expansion", reflected)
+
+    def test_test_error_reflection_warns_about_real_rational_pow_rounding(self):
+        from aider.coders.base_coder import augment_test_error_reflection
+
+        errors = (
+            "RationalTest > testRaiseARealNumberToAPositiveRationalNumber() FAILED\n"
+            "Expecting actual: 16.0 to be close to: 15.999999999999998\n"
+            "rational-numbers.spec.js:153 Expected: 16 Received: 15.999999999999998\n"
+        )
+
+        reflected = augment_test_error_reflection(errors)
+
+        self.assertIn("base^(numerator/denominator)", reflected)
+        self.assertIn("near-integer", reflected)
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 

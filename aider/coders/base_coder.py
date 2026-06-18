@@ -327,6 +327,39 @@ TEST_ERROR_WHITESPACE_GUIDANCE = (
     "from ordinary whitespace, preserving tabs and spaces unless the exercise "
     "rules say to normalize them."
 )
+TEST_ERROR_INPUT_PREPROCESS_GUIDANCE = (
+    "If referenced test helpers pre-process inputs before calling the solution, "
+    "implement for the post-helper input shape, not only the pretty-printed "
+    "failure text; for example a helper may strip display spaces so each row "
+    "arrives as contiguous characters rather than whitespace-separated tokens."
+)
+TEST_ERROR_HEX_GRID_GUIDANCE = (
+    "For Connect/Hex winner checks, use exactly six hex-grid neighbors, not "
+    "eight square-grid neighbors or every diagonal. Rows are offset, so validate "
+    "the neighbor orientation against illegal diagonal and crossing adjacent "
+    "angles cases before returning X/O."
+)
+TEST_ERROR_CHANNEL_TIMEOUT_GUIDANCE = (
+    "For Go channel timeouts, inspect whether tests read a report before closing "
+    "an unclosed shared channel. Do not range forever waiting for channel close "
+    "when the test protocol expects a room/worker to send a report after the "
+    "submitted script actions are consumed."
+)
+TEST_ERROR_FORTH_DEFINITION_GUIDANCE = (
+    "For Forth word redefinition, evaluate each definition body against a "
+    "definition snapshot from before storing the new word, so a word can refer "
+    "to the previous definition with the same name without recursing into itself. "
+    "Avoid eager expansion of nested custom words that can blow memory in "
+    "alloc_attack; store compact definitions and resolve lazily with the right "
+    "snapshot."
+)
+TEST_ERROR_REAL_RATIONAL_GUIDANCE = (
+    "For Rational real exponent tests, method calls like Rational(n,d).exp(base) "
+    "or expreal(base) mean base^(numerator/denominator), not rational^base. "
+    "Raw Math.pow can produce near-integer one-ulp values such as "
+    "15.999999999999998; if tests require exact or 1e-15 comparisons, normalize "
+    "values within a tiny epsilon of an integer."
+)
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:()]+):(?P<line>\d+)(?::\d+)?")
 TEST_ERROR_CONTEXT_MAX_REFS = 16
@@ -506,6 +539,43 @@ def _test_error_guidance_parts(test_errors):
 
     if "escaped" in lower_errors or "whitespace" in lower_errors or "\t" in test_errors:
         guidance.append(TEST_ERROR_WHITESPACE_GUIDANCE)
+
+    if (
+        "prepare(" in lower_errors
+        or "preprocess" in lower_errors
+        or "pre-process" in lower_errors
+        or "replaceall" in lower_errors
+    ):
+        guidance.append(TEST_ERROR_INPUT_PREPROCESS_GUIDANCE)
+
+    if (
+        "illegal diagonal" in lower_errors
+        or "crossing adjacent angles" in lower_errors
+        or ("connect" in lower_errors and "winner" in lower_errors)
+    ):
+        guidance.append(TEST_ERROR_HEX_GRID_GUIDANCE)
+
+    if "timed out" in lower_errors and (
+        "<-" in test_errors or "channel" in lower_errors or "goroutine" in lower_errors
+    ):
+        guidance.append(TEST_ERROR_CHANNEL_TIMEOUT_GUIDANCE)
+
+    if "forth" in lower_errors and (
+        "stackoverflowerror" in lower_errors
+        or "canuse" in lower_errors
+        or "same name" in lower_errors
+        or "alloc_attack" in lower_errors
+        or "allocated memory" in lower_errors
+    ):
+        guidance.append(TEST_ERROR_FORTH_DEFINITION_GUIDANCE)
+
+    if (
+        "raisearealnumber" in lower_errors
+        or "raise a real number" in lower_errors
+        or ("rational-numbers" in lower_errors and "15.999999" in lower_errors)
+        or ("rationaltest" in lower_errors and "to be close to" in lower_errors)
+    ):
+        guidance.append(TEST_ERROR_REAL_RATIONAL_GUIDANCE)
 
     return guidance
 
