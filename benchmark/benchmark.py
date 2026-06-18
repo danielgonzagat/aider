@@ -902,8 +902,7 @@ def run_test_real(
 
         print(errors[-1])
         errors = "\n".join(errors)
-        instructions = errors
-        instructions += prompts.test_failures.format(file_list=file_list)
+        instructions = build_test_failure_instructions(errors, testdir, file_list)
 
     # Clean up build directories after all attempts
     # Rust target/debug
@@ -978,6 +977,11 @@ def run_test_real(
     return results
 
 
+def build_test_failure_instructions(errors, testdir, file_list):
+    errors = base_coder.augment_test_error_reflection(errors, root=testdir)
+    return errors + prompts.test_failures.format(file_list=file_list)
+
+
 def run_unit_tests(original_dname, testdir, history_fname, test_files):
     timeout = 60 * 3
 
@@ -1049,8 +1053,11 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
 
 
 def cleanup_test_output(output, testdir):
-    # remove timing info, to avoid randomizing the response to GPT
-    res = re.sub(r"\bin \d+\.\d+s\b", "", output)
+    # Remove timing info to avoid randomizing the response to GPT.
+    res = re.sub(r"Ran \d+ tests? in \d+\.\d+s", "", output)
+    res = re.sub(r"\bin \d+\.\d+s\b", "", res)
+    res = re.sub(r"^={5,}$", "====", res, flags=re.MULTILINE)
+    res = re.sub(r"^-{5,}$", "----", res, flags=re.MULTILINE)
     res = res.replace(str(testdir), str(testdir.name))
     return res
 
