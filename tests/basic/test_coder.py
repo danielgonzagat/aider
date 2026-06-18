@@ -1238,6 +1238,18 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + cycle * 4))
 
+    def test_repetitive_response_detector_flags_short_analysis_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        cycle = (
+            "But we must also consider that the user may have a test that calls "
+            "`recite(10, 1)` and expects the output to be a list of strings. "
+            "Our code returns a list of strings.\n\n"
+            "Now we need to output the final answer.\n\n"
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + cycle * 4))
+
     def test_repetitive_response_detector_allows_short_code_repetition(self):
         from aider.coders.base_coder import response_is_repetitive
 
