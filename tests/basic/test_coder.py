@@ -1290,6 +1290,43 @@ This command will print 'Hello, World!' to the console."""
             self.assertIn("Response stopped", coder.partial_response_content)
             coder.io.tool_error.assert_called()
 
+    def test_non_stream_repetitive_response_sets_reflection(self):
+        class Message:
+            def __init__(self, content):
+                self.content = content
+
+        class Choice:
+            def __init__(self, content):
+                self.message = Message(content)
+
+        class Completion:
+            def __init__(self, content):
+                self.choices = [Choice(content)]
+
+        with GitTemporaryDirectory():
+            io = InputOutput(yes=True)
+            coder = Coder.create(self.GPT35, "diff", io=io, stream=False)
+            coder.partial_response_content = ""
+            coder.partial_response_function_call = dict()
+            coder.reflected_message = None
+            coder.show_pretty = MagicMock(return_value=False)
+            coder.io.tool_error = MagicMock()
+            coder.io.assistant_output = MagicMock()
+            repeated = (
+                "Now we need to ensure that the code does not produce blank "
+                "line after a verse that is the last but the loop continues "
+                "because take is larger than available and we have multiple "
+                "verses but the last verse is not the last in the loop? "
+                "Not possible.\n"
+            )
+
+            coder.show_send_output(Completion(repeated * 4))
+
+            self.assertIn("repetitive", coder.reflected_message)
+            self.assertIn("Response stopped", coder.partial_response_content)
+            coder.io.tool_error.assert_called()
+            coder.io.assistant_output.assert_not_called()
+
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())
 

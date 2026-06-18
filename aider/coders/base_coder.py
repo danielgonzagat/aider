@@ -1923,6 +1923,12 @@ class Coder:
             self.io.tool_error(show_content_err)
             raise Exception("No data found in LLM response!")
 
+        if response_is_repetitive(self.partial_response_content):
+            self.reflected_message = REPETITIVE_RESPONSE_MESSAGE
+            self.partial_response_content = REPETITIVE_RESPONSE_ASSISTANT_NOTE
+            self.io.tool_error("LLM response became repetitive; retrying.")
+            return
+
         show_resp = self.render_incremental_response(True)
 
         if reasoning_content:
