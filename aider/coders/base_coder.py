@@ -296,17 +296,18 @@ def response_is_repetitive(content):
 
 
 TEST_ERROR_REFLECTION_GUIDANCE = (
-    "Use the exact compiler/test messages above to infer required signatures, "
-    "argument types, return types, and behavior. Do not repeat the previous "
-    "implementation unchanged; make a material correction that addresses the "
-    "reported mismatch. Use only the compiler messages and referenced lines; "
-    "do not reconstruct, invent, or quote full test files. Return only corrected edits."
+    "Use the exact compiler/test messages and referenced lines above together "
+    "with the original exercise instructions already in the chat to infer "
+    "required signatures, argument types, return types, and behavior. Do not "
+    "repeat the previous implementation unchanged; make a material correction "
+    "that addresses the reported mismatch without reconstructing, inventing, "
+    "or quoting full test files. Return only corrected edits."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
 TEST_ERROR_CONTEXT_MAX_REFS = 5
 TEST_ERROR_CONTEXT_HEAD_LINES = 40
-TEST_ERROR_CONTEXT_RADIUS = 8
+TEST_ERROR_CONTEXT_RADIUS = 12
 TEST_ERROR_CONTEXT_MAX_CHARS = 4000
 
 

@@ -95,6 +95,31 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("\\\"none\\\", \\\"syntax\\\", or \\\"range\\\"", instructions)
         self.assertIn("hexadecimal.go", instructions)
 
+    def test_build_test_failure_instructions_includes_adjacent_preceding_test_context(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "acronym_test.rs"
+            lines = [f"// filler {line_no}" for line_no in range(1, 101)]
+            lines[79] = "fn underscore_emphasis() { expected TRNT }"
+            lines[88] = "    assert_eq!(output, expected);"
+            test_file.write_text("\n".join(lines))
+            errors = "./acronym_test.rs:89:5: assertion failed"
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "lib.rs")
+
+        self.assertIn("underscore_emphasis", instructions)
+        self.assertIn("assert_eq!(output, expected)", instructions)
+
+    def test_build_test_failure_instructions_keeps_original_exercise_instructions_available(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "example_test.py"
+            test_file.write_text("def test_example():\n    assert solve() == 1\n")
+            errors = "./example_test.py:2: AssertionError"
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "solution.py")
+
+        self.assertIn("original exercise instructions", instructions)
+        self.assertNotIn("Use only the compiler messages", instructions)
+
 
 class TestLanguageCopy(unittest.TestCase):
     def test_copy_selected_language_practice_dirs_copies_only_requested_language(self):
