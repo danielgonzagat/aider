@@ -16,4 +16,6 @@ aider/_version.py
 .#*
 .gitattributes
 tmp.benchmarks/
+tmp.modal-*/
+.modal-*
 .docker_bash_history

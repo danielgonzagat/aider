@@ -25,6 +25,7 @@ REMOTE_BENCHMARK_DIR = Path("/benchmarks")
 REMOTE_EXERCISES_DIR = "polyglot-benchmark"
 SECONDS_PER_DAY = 24 * 60 * 60
 OUTPUT_TAIL_CHARS = 8000
+MODAL_RESULT_SUMMARY_FILENAME = ".aider.modal-result.json"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCKERFILE = REPO_ROOT / "benchmark" / "Dockerfile"
@@ -96,6 +97,15 @@ class BenchmarkResult:
     result_dir: str | None
     command: str
     output_tail: str
+
+
+def write_modal_result_summary(result: BenchmarkResult) -> Path | None:
+    if result.result_dir is None:
+        return None
+
+    summary_path = Path(result.result_dir) / MODAL_RESULT_SUMMARY_FILENAME
+    summary_path.write_text(json.dumps(asdict(result), indent=2, sort_keys=True))
+    return summary_path
 
 
 def remote_exercises_dir_for_request(exercises_dir: str, language: str) -> str:
@@ -262,7 +272,7 @@ def _run_benchmark_request(request: BenchmarkRequest) -> BenchmarkResult:
         text=True,
     )
     output = completed.stdout[-OUTPUT_TAIL_CHARS:]
-    return BenchmarkResult(
+    result = BenchmarkResult(
         language=request.language,
         run_name=request.run_name,
         returncode=completed.returncode,
@@ -270,6 +280,8 @@ def _run_benchmark_request(request: BenchmarkRequest) -> BenchmarkResult:
         command=shell_join(cmd),
         output_tail=output,
     )
+    write_modal_result_summary(result)
+    return result
 
 
 if modal is not None:

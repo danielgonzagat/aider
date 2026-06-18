@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+import tempfile
 import unittest
 
 from benchmark.modal_runner import (
@@ -9,7 +12,9 @@ from benchmark.modal_runner import (
     build_benchmark_command,
     build_shards,
     parse_languages,
+    BenchmarkResult,
     remote_exercises_dir_for_request,
+    write_modal_result_summary,
 )
 
 
@@ -54,6 +59,26 @@ class TestModalRunner(unittest.TestCase):
         self.assertEqual(len(MODAL_CONTEXT_SYMLINK_PATHS), 6)
         for symlink_path in MODAL_CONTEXT_SYMLINK_PATHS:
             self.assertIn(symlink_path, assume_unchanged_command)
+
+    def test_write_modal_result_summary_persists_shard_metadata(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = BenchmarkResult(
+                language="python",
+                run_name="atomic-smoke-python",
+                returncode=1,
+                result_dir=tmpdir,
+                command="./benchmark/benchmark.py atomic-smoke-python",
+                output_tail="failed tests tail",
+            )
+
+            summary_path = write_modal_result_summary(result)
+
+            self.assertEqual(summary_path, Path(tmpdir) / ".aider.modal-result.json")
+            summary = json.loads(summary_path.read_text())
+            self.assertEqual(summary["language"], "python")
+            self.assertEqual(summary["run_name"], "atomic-smoke-python")
+            self.assertEqual(summary["returncode"], 1)
+            self.assertEqual(summary["output_tail"], "failed tests tail")
 
     def test_parse_languages_defaults_and_normalizes(self):
         self.assertEqual(parse_languages(None), DEFAULT_LANGUAGES)
