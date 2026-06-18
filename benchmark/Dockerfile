@@ -35,8 +35,10 @@ RUN ARCH=$(uname -m) && \
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install Rust
-ADD https://sh.rustup.rs /tmp/rustup.sh
-RUN chmod +x /tmp/rustup.sh && /tmp/rustup.sh -y && rm /tmp/rustup.sh
+RUN curl -fsSL https://sh.rustup.rs -o /tmp/rustup.sh && \
+    chmod +x /tmp/rustup.sh && \
+    /tmp/rustup.sh -y && \
+    rm /tmp/rustup.sh
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Node.js and dependencies
