@@ -67,6 +67,11 @@ class TestModalRunner(unittest.TestCase):
         for symlink_path in MODAL_CONTEXT_SYMLINK_PATHS:
             self.assertIn(symlink_path, assume_unchanged_command)
 
+    def test_modal_dockerfile_pins_jest_29_for_exercism_throw_error_matcher(self):
+        dockerfile = (Path(__file__).parent / "Dockerfile").read_text()
+
+        self.assertIn("jest@29.7.0", dockerfile)
+
     def test_write_modal_result_summary_persists_shard_metadata(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = BenchmarkResult(
