@@ -1302,6 +1302,25 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated))
 
+    def test_repetitive_response_detector_flags_quoted_payload_prefix_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = "\n".join(
+            f"Now we need to ensure that the input tonic may be \"C{idx}\" "
+            "(major) in sharp_major. Good."
+            for idx in range(40)
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated))
+
+    def test_repetitive_response_detector_flags_single_line_stuck_sentence_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        cycle = "No. I'll use \"eleven\"? I'm stuck. Let's just use \"eleven\"? "
+        content = "intro\n" + cycle * 80
+
+        self.assertTrue(response_is_repetitive(content))
+
     def test_repetitive_response_detector_flags_short_analysis_loop(self):
         from aider.coders.base_coder import response_is_repetitive
 

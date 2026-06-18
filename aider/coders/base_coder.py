@@ -118,6 +118,9 @@ REPETITIVE_RESPONSE_PROSE_MARKERS = (
     "maybe",
     "likely",
     "now for",
+    "now test",
+    "i'm stuck",
+    "let's just",
 )
 
 
@@ -190,7 +193,10 @@ def _looks_like_repeated_explanation(line):
 
 
 def _repetition_template(line):
-    return re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", line)
+    template = re.sub(r"`[^`\n]*`", "`<payload>`", line)
+    template = re.sub(r'"[^"\n]*"', '"<payload>"', template)
+    template = re.sub(r"\[[^\]\n]*\]", "[<payload>]", template)
+    return re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", template)
 
 
 def _repetition_prefix_template(line):
