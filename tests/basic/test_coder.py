@@ -1719,16 +1719,13 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertIn("pre-process", reflected)
         self.assertIn("six hex-grid neighbors", reflected)
+        self.assertIn("(-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0)", reflected)
         self.assertIn("prepare(tc.board)", reflected)
 
     def test_test_error_reflection_warns_about_channel_timeout_reports(self):
         from aider.coders.base_coder import augment_test_error_reflection
 
-        errors = (
-            "Tests timed out!\n"
-            "robot_simulator_step3_test.go:219: pls := <-rep\n"
-            "robot_simulator_step3_test.go:263: close(log)\n"
-        )
+        errors = "Tests timed out!\n"
 
         reflected = augment_test_error_reflection(errors)
 
@@ -1747,6 +1744,7 @@ This command will print 'Hello, World!' to the console."""
         reflected = augment_test_error_reflection(errors)
 
         self.assertIn("definition snapshot", reflected)
+        self.assertIn("later redefining foo must not change bar", reflected)
         self.assertIn("eager expansion", reflected)
 
     def test_test_error_reflection_warns_about_real_rational_pow_rounding(self):
@@ -1762,6 +1760,7 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertIn("base^(numerator/denominator)", reflected)
         self.assertIn("near-integer", reflected)
+        self.assertIn("Math.round", reflected)
 
     def test_normalize_language(self):
         coder = Coder.create(self.GPT35, None, io=InputOutput())

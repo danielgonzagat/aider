@@ -335,30 +335,34 @@ TEST_ERROR_INPUT_PREPROCESS_GUIDANCE = (
 )
 TEST_ERROR_HEX_GRID_GUIDANCE = (
     "For Connect/Hex winner checks, use exactly six hex-grid neighbors, not "
-    "eight square-grid neighbors or every diagonal. Rows are offset, so validate "
-    "the neighbor orientation against illegal diagonal and crossing adjacent "
-    "angles cases before returning X/O."
+    "eight square-grid neighbors or parity-based row variants. For Exercism "
+    "Connect rows parsed as row/column characters, the fixed offsets are "
+    "(-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0); validate them against "
+    "illegal diagonal and crossing adjacent angles cases before returning X/O."
 )
 TEST_ERROR_CHANNEL_TIMEOUT_GUIDANCE = (
-    "For Go channel timeouts, inspect whether tests read a report before closing "
-    "an unclosed shared channel. Do not range forever waiting for channel close "
-    "when the test protocol expects a room/worker to send a report after the "
-    "submitted script actions are consumed."
+    "For test timeouts, first look for unbounded loops or blocking reads/ranges. "
+    "If channels or goroutines are involved, inspect whether tests read a report "
+    "before closing an unclosed shared channel. Do not range forever waiting for "
+    "channel close when the protocol expects a room/worker to send a report after "
+    "the submitted script actions are consumed."
 )
 TEST_ERROR_FORTH_DEFINITION_GUIDANCE = (
     "For Forth word redefinition, evaluate each definition body against a "
-    "definition snapshot from before storing the new word, so a word can refer "
-    "to the previous definition with the same name without recursing into itself. "
-    "Avoid eager expansion of nested custom words that can blow memory in "
-    "alloc_attack; store compact definitions and resolve lazily with the right "
-    "snapshot."
+    "definition snapshot from before storing the new word. A word like bar "
+    "defined as foo must keep the old foo, so later redefining foo must not change "
+    "bar; a new foo defined as foo 1 + must bind that inner foo to the previous "
+    "foo without recursing into itself. Avoid eager expansion of nested custom "
+    "words that can blow memory in alloc_attack; store compact definitions and "
+    "resolve lazily with the right snapshot."
 )
 TEST_ERROR_REAL_RATIONAL_GUIDANCE = (
     "For Rational real exponent tests, method calls like Rational(n,d).exp(base) "
     "or expreal(base) mean base^(numerator/denominator), not rational^base. "
     "Raw Math.pow can produce near-integer one-ulp values such as "
     "15.999999999999998; if tests require exact or 1e-15 comparisons, normalize "
-    "values within a tiny epsilon of an integer."
+    "with a tiny epsilon check such as Math.abs(result - Math.round(result)) "
+    "before returning Math.round(result)."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:()]+):(?P<line>\d+)(?::\d+)?")
@@ -555,9 +559,7 @@ def _test_error_guidance_parts(test_errors):
     ):
         guidance.append(TEST_ERROR_HEX_GRID_GUIDANCE)
 
-    if "timed out" in lower_errors and (
-        "<-" in test_errors or "channel" in lower_errors or "goroutine" in lower_errors
-    ):
+    if "timed out" in lower_errors or "timeout" in lower_errors:
         guidance.append(TEST_ERROR_CHANNEL_TIMEOUT_GUIDANCE)
 
     if "forth" in lower_errors and (
