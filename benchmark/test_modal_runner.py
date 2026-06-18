@@ -72,6 +72,12 @@ class TestModalRunner(unittest.TestCase):
 
         self.assertIn("jest@29.7.0", dockerfile)
 
+    def test_modal_dockerfile_pins_rust_toolchain_and_retries_downloads(self):
+        dockerfile = (Path(__file__).parent / "Dockerfile").read_text()
+
+        self.assertIn("ENV RUSTUP_MAX_RETRIES=10", dockerfile)
+        self.assertIn("--default-toolchain 1.96.0", dockerfile)
+
     def test_write_modal_result_summary_persists_shard_metadata(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = BenchmarkResult(

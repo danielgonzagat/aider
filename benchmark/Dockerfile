@@ -41,9 +41,10 @@ RUN ARCH=$(uname -m) && \
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install Rust
+ENV RUSTUP_MAX_RETRIES=10
 RUN curl -fsSL https://sh.rustup.rs -o /tmp/rustup.sh && \
     chmod +x /tmp/rustup.sh && \
-    /tmp/rustup.sh -y && \
+    /tmp/rustup.sh -y --default-toolchain 1.96.0 && \
     rm /tmp/rustup.sh
 ENV PATH="/root/.cargo/bin:${PATH}"
 
