@@ -223,6 +223,28 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("rows/lines", instructions)
         self.assertIn("Tried to write to full buffer", instructions)
 
+    def test_build_test_failure_instructions_adds_escape_whitespace_guidance(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "SgfParsingTest.java"
+            test_file.write_text(
+                "class SgfParsingTest {\n"
+                "  void escapedProperty() {\n"
+                "    assertThat(parseTree).isEqualTo(expectedTree);\n"
+                "  }\n"
+                "}\n"
+            )
+            errors = (
+                "./SgfParsingTest.java:3: AssertionFailedError:\n"
+                "SgfParsingTest > escapedProperty() FAILED\n"
+                "expected: value with\\t tab\n"
+                "but was: value with  tab"
+            )
+
+            instructions = build_test_failure_instructions(errors, Path(tmpdir), "SgfParsing.java")
+
+        self.assertIn("ordinary whitespace", instructions)
+        self.assertIn("preserving tabs and spaces", instructions)
+
     def test_build_test_failure_instructions_reuses_existing_helper_apis(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             source_file = Path(tmpdir) / "SgfParsing.java"
@@ -253,6 +275,7 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("existing helper APIs", instructions)
         self.assertIn("method names", instructions)
         self.assertIn("appendChild", instructions)
+        self.assertNotIn("zero/0", instructions)
 
 
 class TestBenchmarkFileContext(unittest.TestCase):

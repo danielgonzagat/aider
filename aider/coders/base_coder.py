@@ -304,21 +304,28 @@ TEST_ERROR_REFLECTION_GUIDANCE = (
     "unchanged; make a material correction that addresses the reported mismatch "
     "without reconstructing, inventing, or quoting full test files. Match exact "
     "exception messages and output strings from withMessage/hasMessage/isEqualTo "
-    "context. For every expected/but-was or Expecting-message block, fix each "
-    "matching literal by copying the expected value byte-for-byte, including "
-    "capitalization, punctuation, digits, quote contents, and whitespace such as "
-    "tabs/newlines/spaces; do not paraphrase zero/0 or rows/lines. If expected "
-    "and actual differ only by whitespace, repair only that whitespace. When a "
-    "compiler reports a duplicate class, reuse the existing sibling class instead "
-    "of declaring another one. When a compiler reports cannot find symbol on a "
-    "helper, inspect and call the existing helper APIs, constructors, and method "
-    "names instead of inventing replacements. When expected/actual values print "
-    "as opaque object hashes, use nearby expected constructors and value-object "
-    "helpers to infer fields. For Pair/Point/Position coordinates, convert "
-    "internal zero-based row/column indexes to the one-based public coordinate "
-    "system when expected constructors show one-based values. Match the failing "
-    "assertion entry point, including constructor calls in lambdas. Return only "
-    "corrected edits."
+    "context. When a compiler reports a duplicate class, reuse the existing "
+    "sibling class instead of declaring another one. When a compiler reports "
+    "cannot find symbol on a helper, inspect and call the existing helper APIs, "
+    "constructors, and method names instead of inventing replacements. When "
+    "expected/actual values print as opaque object hashes, use nearby expected "
+    "constructors and value-object helpers to infer fields. For Pair/Point/"
+    "Position coordinates, convert internal zero-based row/column indexes to "
+    "the one-based public coordinate system when expected constructors show "
+    "one-based values. Match the failing assertion entry point, including "
+    "constructor calls in lambdas. Return only corrected edits."
+)
+TEST_ERROR_LITERAL_GUIDANCE = (
+    "For every expected exception message block, fix each matching literal by "
+    "copying the expected value byte-for-byte, including capitalization, "
+    "punctuation, digits, quote contents, and whitespace such as "
+    "tabs/newlines/spaces; do not paraphrase zero/0 or rows/lines."
+)
+TEST_ERROR_WHITESPACE_GUIDANCE = (
+    "If expected and actual differ only by whitespace, repair only that "
+    "whitespace. For parser escape failures, distinguish escaped newline folding "
+    "from ordinary whitespace, preserving tabs and spaces unless the exercise "
+    "rules say to normalize them."
 )
 TEST_ERROR_CONTEXT_HEADER = "Referenced test/source lines:"
 TEST_ERROR_CONTEXT_PATTERN = re.compile(r"(?P<path>(?:\.{1,2}/|/)?[^\s:]+):(?P<line>\d+)(?::\d+)?")
@@ -416,6 +423,23 @@ def _collect_test_error_context(test_errors, root=None):
     return context[:TEST_ERROR_CONTEXT_MAX_CHARS]
 
 
+def _test_error_guidance_parts(test_errors):
+    guidance = [TEST_ERROR_REFLECTION_GUIDANCE]
+    lower_errors = test_errors.lower()
+
+    if (
+        "expecting message to be" in lower_errors
+        or "withmessage" in lower_errors
+        or "hasmessage" in lower_errors
+    ):
+        guidance.append(TEST_ERROR_LITERAL_GUIDANCE)
+
+    if "escaped" in lower_errors or "whitespace" in lower_errors or "\t" in test_errors:
+        guidance.append(TEST_ERROR_WHITESPACE_GUIDANCE)
+
+    return guidance
+
+
 def augment_test_error_reflection(test_errors, root=None):
     test_errors = str(test_errors or "")
     if not test_errors or TEST_ERROR_REFLECTION_GUIDANCE in test_errors:
@@ -425,7 +449,7 @@ def augment_test_error_reflection(test_errors, root=None):
     parts = [test_errors]
     if context:
         parts.append(context)
-    parts.append(TEST_ERROR_REFLECTION_GUIDANCE)
+    parts.extend(_test_error_guidance_parts(test_errors))
     return "\n\n".join(parts)
 
 
