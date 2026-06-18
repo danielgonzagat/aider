@@ -158,6 +158,34 @@ def resolve_dirname(dirname, use_single_prior, make_new):
     return dirname
 
 
+def selected_language_dirs(base_dir, languages=None):
+    """Return language dirs filtered by the comma-separated --languages option."""
+    base_dir = Path(base_dir)
+    lang_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+
+    if not languages:
+        return lang_dirs
+
+    requested = set(lang.strip().lower() for lang in languages.split(",") if lang.strip())
+    if not requested:
+        return lang_dirs
+
+    return [d for d in lang_dirs if d.name.lower() in requested]
+
+
+def copy_selected_language_practice_dirs(original_dname, dirname, languages=None):
+    """Copy only selected language practice dirs into a benchmark result dir."""
+    os.makedirs(dirname, exist_ok=True)
+    for lang_dir in selected_language_dirs(original_dname, languages):
+        practice_dir = lang_dir / "exercises" / "practice"
+        if not practice_dir.exists():
+            continue
+
+        dest_lang_dir = Path(dirname) / lang_dir.name / "exercises" / "practice"
+        os.makedirs(dest_lang_dir.parent, exist_ok=True)
+        shutil.copytree(practice_dir, dest_lang_dir)
+
+
 @app.command()
 def main(
     dirnames: Optional[List[str]] = typer.Argument(None, help="Directory names"),
@@ -259,13 +287,9 @@ def main(
         """Get all exercise directories for specified languages (or all if none specified)"""
         base_dir = Path(base_dir)
 
-        # Get available language dirs
-        lang_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+        lang_dirs = selected_language_dirs(base_dir, languages)
 
-        # Filter to requested languages if specified
         if languages:
-            requested = set(lang.strip().lower() for lang in languages.split(","))
-            lang_dirs = [d for d in lang_dirs if d.name.lower() in requested]
             dump(lang_dirs)
             if not lang_dirs:
                 print(f"No matching language directories found for: {languages}")
@@ -307,15 +331,7 @@ def main(
     if not dirname.exists():
         print(f"Copying {original_dname} -> {dirname} ...")
         # Only copy the practice subdirs with exercises
-        os.makedirs(dirname, exist_ok=True)
-        for lang_dir in original_dname.iterdir():
-            if not lang_dir.is_dir():
-                continue
-            practice_dir = lang_dir / "exercises" / "practice"
-            if practice_dir.exists():
-                dest_lang_dir = dirname / lang_dir.name / "exercises" / "practice"
-                os.makedirs(dest_lang_dir.parent, exist_ok=True)
-                shutil.copytree(practice_dir, dest_lang_dir)
+        copy_selected_language_practice_dirs(original_dname, dirname, languages)
         print("...done")
 
     test_dnames = sorted(str(d.relative_to(original_dname)) for d in exercise_dirs)

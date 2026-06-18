@@ -96,5 +96,26 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("hexadecimal.go", instructions)
 
 
+class TestLanguageCopy(unittest.TestCase):
+    def test_copy_selected_language_practice_dirs_copies_only_requested_language(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            original = Path(tmpdir) / "polyglot"
+            result = Path(tmpdir) / "result"
+            for language in ("cpp", "python", "rust"):
+                practice = original / language / "exercises" / "practice" / f"{language}-exercise"
+                practice.mkdir(parents=True)
+                (practice / "README.md").write_text(language)
+
+            self.assertTrue(hasattr(benchmark_script, "copy_selected_language_practice_dirs"))
+
+            benchmark_script.copy_selected_language_practice_dirs(original, result, "python")
+
+            self.assertTrue(
+                (result / "python" / "exercises" / "practice" / "python-exercise").is_dir()
+            )
+            self.assertFalse((result / "cpp").exists())
+            self.assertFalse((result / "rust").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
