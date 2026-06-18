@@ -1365,6 +1365,17 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + repeated))
 
+    def test_repetitive_response_detector_flags_repeated_rhetorical_payload_loop(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = "\n".join(
+            f'For a word like "{word}"? Already.'
+            for _ in range(4)
+            for word in ("crypt", "myth", "rhythm", "fly", "sky", "why", "by", "gy")
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated))
+
     def test_repetitive_response_detector_flags_repeated_sentence_paragraphs(self):
         from aider.coders.base_coder import response_is_repetitive
 
