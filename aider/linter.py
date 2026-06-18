@@ -198,6 +198,23 @@ def lint_python_compile(fname, code):
     return LintResult(text=res, lines=line_numbers)
 
 
+def looks_like_cpp_header(fname, code):
+    if Path(fname).suffix.lower() not in {".h", ".hh", ".hpp", ".hxx"}:
+        return False
+
+    cpp_markers = (
+        "namespace ",
+        "std::",
+        "template<",
+        "template <",
+        "class ",
+        "public:",
+        "private:",
+        "protected:",
+    )
+    return any(marker in code for marker in cpp_markers)
+
+
 def basic_lint(fname, code):
     """
     Use tree-sitter to look for syntax errors, display them with tree context.
@@ -206,6 +223,8 @@ def basic_lint(fname, code):
     lang = filename_to_lang(fname)
     if not lang:
         return
+    if lang == "c" and looks_like_cpp_header(fname, code):
+        lang = "cpp"
 
     # Tree-sitter linter is not capable of working with typescript #1132
     if lang == "typescript":

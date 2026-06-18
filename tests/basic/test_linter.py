@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from aider.dump import dump  # noqa
-from aider.linter import Linter
+from aider.linter import Linter, basic_lint
 
 
 class TestLinter(unittest.TestCase):
@@ -78,6 +78,20 @@ class TestLinter(unittest.TestCase):
             # The result should contain the error message
             self.assertIsNotNone(result)
             self.assertIn("Error message", result.text)
+
+    def test_cpp_header_with_std_vector_signature_does_not_lint_as_c(self):
+        code = (
+            "#ifndef KNAPSACK_H\n"
+            "#define KNAPSACK_H\n"
+            "#include <vector>\n"
+            "namespace knapsack {\n"
+            "struct Item { int weight; int value; };\n"
+            "int maximumValue(int maximumWeight, const std::vector<Item>& items);\n"
+            "}\n"
+            "#endif\n"
+        )
+
+        self.assertIsNone(basic_lint("knapsack.h", code))
 
 
 if __name__ == "__main__":
