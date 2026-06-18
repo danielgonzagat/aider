@@ -217,6 +217,10 @@ AssertionError: 'OK' != 'OKx'
         self.assertIn("withMessage", instructions)
         self.assertIn("exact expected string literals", instructions)
         self.assertIn("exception messages", instructions)
+        self.assertIn("byte-for-byte", instructions)
+        self.assertIn("tabs/newlines/spaces", instructions)
+        self.assertIn("zero/0", instructions)
+        self.assertIn("rows/lines", instructions)
         self.assertIn("Tried to write to full buffer", instructions)
 
     def test_build_test_failure_instructions_reuses_existing_helper_apis(self):
