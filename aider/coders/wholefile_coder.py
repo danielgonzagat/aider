@@ -7,6 +7,41 @@ from .base_coder import Coder
 from .wholefile_prompts import WholeFilePrompts
 
 
+def _normalize_filename_from_chat_files(fname, chat_files):
+    if not fname:
+        return ""
+
+    fname = str(fname)
+    chat_files = [str(chat_file) for chat_file in chat_files]
+    if fname in chat_files:
+        return fname
+
+    path_name = Path(fname).name
+    if path_name in chat_files:
+        return path_name
+
+    matches = []
+    for chat_file in chat_files:
+        candidates = [chat_file]
+        basename = Path(chat_file).name
+        if basename != chat_file:
+            candidates.append(basename)
+
+        for candidate in candidates:
+            if not candidate or not fname.endswith(candidate):
+                continue
+            prefix = fname[: -len(candidate)]
+            if prefix and prefix[-1].isalnum():
+                continue
+            matches.append(chat_file)
+            break
+
+    matches = sorted(set(matches))
+    if len(matches) == 1:
+        return matches[0]
+    return ""
+
+
 class WholeFileCoder(Coder):
     """A coder that operates on entire files for code modifications."""
 
@@ -65,11 +100,14 @@ class WholeFileCoder(Coder):
                     if len(fname) > 250:
                         fname = ""
 
-                    # Did gpt prepend a bogus dir? It especially likes to
-                    # include the path/to prefix from the one-shot example in
-                    # the prompt.
-                    if fname and fname not in chat_files and Path(fname).name in chat_files:
-                        fname = Path(fname).name
+                    if chat_files:
+                        # Accept filename lines with harmless prose/punctuation around
+                        # the actual in-chat path, eg "Now produce final answer.foo.py".
+                        # Treat those as lower-confidence than exact filename lines.
+                        normalized_fname = _normalize_filename_from_chat_files(fname, chat_files)
+                        if normalized_fname and normalized_fname != fname:
+                            fname_source = "saw"
+                        fname = normalized_fname
                 if not fname:  # blank line? or ``` was on first line i==0
                     if saw_fname:
                         fname = saw_fname

@@ -1290,6 +1290,17 @@ This command will print 'Hello, World!' to the console."""
 
         self.assertTrue(response_is_repetitive("intro\n" + cycle * 4))
 
+    def test_repetitive_response_detector_flags_repeated_sentence_paragraphs(self):
+        from aider.coders.base_coder import response_is_repetitive
+
+        repeated = (
+            "The error is that `maximum_value` is not a member. "
+            "The header now defines it. "
+            "The error is from a previous compilation. "
+        )
+
+        self.assertTrue(response_is_repetitive("intro\n" + repeated * 12))
+
     def test_repetitive_response_detector_allows_short_code_repetition(self):
         from aider.coders.base_coder import response_is_repetitive
 

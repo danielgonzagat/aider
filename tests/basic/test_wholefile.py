@@ -316,6 +316,29 @@ after b
             updated_content = f.read()
         self.assertEqual(updated_content, new_content)
 
+    def test_atomic_prefers_final_filename_embedded_in_prose_over_earlier_fence(self):
+        sample_file = "connect.js"
+        original = "export const oldValue = 0;\n"
+        Path(sample_file).write_text(original)
+
+        io = InputOutput(yes=True)
+        coder = Coder.create(self.GPT35, "atomic", io=io, fnames=[sample_file])
+        coder.partial_response_content = (
+            "Here is a board example that is not a file listing:\n\n"
+            "```\n"
+            ". O . X .\n"
+            "```\n\n"
+            "Now produce final answer.connect.js\n"
+            "```javascript\n"
+            "export const newValue = 1;\n"
+            "```\n"
+        )
+
+        edited_files = coder.apply_updates()
+
+        self.assertEqual(edited_files, {sample_file})
+        self.assertEqual(Path(sample_file).read_text(), "export const newValue = 1;\n")
+
     def test_full_edit(self):
         # Create a few temporary files
         _, file1 = tempfile.mkstemp()

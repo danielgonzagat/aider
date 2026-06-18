@@ -81,6 +81,7 @@ REPETITIVE_RESPONSE_MIN_SHORT_CYCLE_LINES = 3
 REPETITIVE_RESPONSE_MIN_DYNAMIC_TEMPLATE_REPEATS = 8
 REPETITIVE_RESPONSE_MIN_SHORT_WORDS = 5
 REPETITIVE_RESPONSE_WINDOW_LINES = 160
+REPETITIVE_RESPONSE_SENTENCE_WINDOW = 3
 REPETITIVE_RESPONSE_ASSISTANT_NOTE = (
     "Response stopped because it became repetitive before providing valid edits."
 )
@@ -130,6 +131,25 @@ def _repetition_template(line):
     return re.sub(r"\b\d+(?:\.\d+)?\b", "<num>", line)
 
 
+def _iter_repetition_units(line):
+    normalized = " ".join(str(line or "").strip().split())
+    if not normalized:
+        return
+
+    yield normalized
+
+    sentences = [
+        " ".join(match.group(0).split())
+        for match in re.finditer(r"[^.!?]+[.!?](?=\s|$)", normalized)
+    ]
+    if len(sentences) < REPETITIVE_RESPONSE_SENTENCE_WINDOW:
+        return
+
+    end = len(sentences) - REPETITIVE_RESPONSE_SENTENCE_WINDOW + 1
+    for index in range(end):
+        yield " ".join(sentences[index : index + REPETITIVE_RESPONSE_SENTENCE_WINDOW])
+
+
 def response_is_repetitive(content):
     content = str(content or "")
     if len(content) < REPETITIVE_RESPONSE_MIN_CHARS:
@@ -138,12 +158,12 @@ def response_is_repetitive(content):
     repeated_candidates = []
     template_candidates = []
     for line in content.splitlines()[-REPETITIVE_RESPONSE_WINDOW_LINES:]:
-        normalized = " ".join(line.strip().split())
-        if _looks_like_repeated_explanation(normalized):
-            repeated_candidates.append(normalized)
-            template = _repetition_template(normalized)
-            if template != normalized:
-                template_candidates.append(template)
+        for normalized in _iter_repetition_units(line):
+            if _looks_like_repeated_explanation(normalized):
+                repeated_candidates.append(normalized)
+                template = _repetition_template(normalized)
+                if template != normalized:
+                    template_candidates.append(template)
 
     if not repeated_candidates:
         return False
