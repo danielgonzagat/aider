@@ -1854,3 +1854,31 @@
   versions: 0.86.2.dev
   seconds_per_case: 104.0
   total_cost: 0.8756
+
+- dirname: 2026-06-18-22-03-54--atomic-deepseek-v4-pro-polyglot-context-c4d9f23-official-r11
+  test_cases: 225
+  model: DeepSeek V4 Pro
+  edit_format: atomic
+  commit_hash: c4d9f23
+  pass_rate_1: 36.4
+  pass_rate_2: 94.2
+  pass_num_1: 82
+  pass_num_2: 212
+  percent_cases_well_formed: 96.9
+  error_outputs: 7
+  num_malformed_responses: 7
+  num_with_malformed_responses: 7
+  user_asks: 0
+  lazy_comments: 0
+  syntax_errors: 0
+  indentation_errors: 0
+  exhausted_context_windows: 0
+  prompt_tokens: 1851707
+  completion_tokens: 2308601
+  test_timeouts: 3
+  total_tests: 225
+  command: aider --model deepseek/deepseek-v4-pro
+  date: 2026-06-18
+  versions: 0.86.3.dev
+  seconds_per_case: 115.2
+  total_cost: 0.0000
