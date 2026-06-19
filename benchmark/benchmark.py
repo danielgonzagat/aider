@@ -1028,7 +1028,7 @@ def run_test_real(
 
 
 def build_test_failure_instructions(errors, testdir, file_list):
-    errors = base_coder.augment_test_error_reflection(errors, root=testdir)
+    errors = str(errors or "")  # standard upstream harness: raw test output, no injection
     return errors + prompts.test_failures.format(file_list=file_list)
 
 
